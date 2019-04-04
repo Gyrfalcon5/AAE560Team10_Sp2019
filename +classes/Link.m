@@ -20,7 +20,7 @@ classdef Link < handle
         
         % TODO make this actually use travel_fun to calculate time
         function time = get.travel_time(obj)
-            time = travel_fun(num_vehicles);
+            time = obj.travel_fun(obj.num_vehicles);
         end
         
         % Constructor

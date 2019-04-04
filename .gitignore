@@ -1,3 +1,6 @@
 # Swap files from Vim
 *.swp
 *.swo
+
+# Matlab lock files
+*.m~

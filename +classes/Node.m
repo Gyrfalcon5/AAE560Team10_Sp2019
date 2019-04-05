@@ -6,6 +6,7 @@ classdef Node < handle
         links % Links that connect to this node
         wait_fun % Anonymous function that defines wait time
         users % List of vehicle at the node
+        id % Identifies this node
     end
 
     properties (Dependent)

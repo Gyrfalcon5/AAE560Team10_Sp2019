@@ -18,11 +18,14 @@ x_dim = 10;
 y_dim = 10;
 axis([0 x_dim+1 0 y_dim+1])
 map(x_dim, y_dim) = Node;
+count = 1;
 for idx = 1:x_dim
     for jdx = 1:y_dim
         map(idx, jdx) = Node;
         map(idx, jdx).coordinate = [idx jdx];
+        map(idx, jdx).id = count;
         plotNode(map(idx, jdx))
+        count = count + 1;
     end
 end
 xlabel("North ->")
@@ -66,6 +69,15 @@ for idx = 1:length(links)
     end
 end
 
+for idx = numel(links):-1:1
+    link = links(idx);
+    nodes = link.nodes;
+    s(idx) = nodes(1).id;
+    t(idx) = nodes(2).id;
+    weights(idx) = link.travel_time;
+end
+
+mapGraph = graph(s, t, weights);
 
 % Making cars
 num_cars = 100;
@@ -75,25 +87,31 @@ for idx = num_cars:-1:1
     cars(idx).onNode = 1;
     cars(idx).onLink = 0;
     cars(idx).initializePlot();
+    cars(idx).destination = randi([1, numel(map)]);
 end
 
 % Stuff for recording
-%v = VideoWriter("animation.avi", "Motion JPEG AVI");
-%open(v);
+v = VideoWriter("../animation.avi", "Motion JPEG AVI");
+open(v);
 
-while(1)
+while (1)
     nodeCars = cars([cars.onNode] == 1);
     linkCars = cars([cars.onLink] == 1);
-    arrayfun(@(x) x.stepForward(), linkCars)
+    if ~isempty(linkCars)
+        arrayfun(@(x) x.stepForward(mapGraph, map), linkCars);
+    end
     
     nodeCarsCoords = [nodeCars.coordinate];
     nodeCarsX = nodeCarsCoords(1:2:end);
     nodeCarsY = nodeCarsCoords(2:2:end);
-    
+    if ~isempty(nodeCars)
+        arrayfun(@(x) x.stepForward(mapGraph, map), nodeCars);
+    end
     % These blocks assign random directions without making anything go out
     % of bounds. This is complicated now but will not be needed so much
     % later
     % Cars that are not on any edge
+    %{
     currentCars = nodeCars(nodeCarsX < x_dim &...
                            nodeCarsY < y_dim &...
                            nodeCarsX > 1 &...
@@ -152,12 +170,20 @@ while(1)
     currentCars = nodeCars(nodeCarsX == x_dim & nodeCarsY == y_dim);
     directions = {'e', 's'};
     arrayfun(@(x) x.setDirection(directions{randi([1, length(directions)])}, map), currentCars)
-    
+    %}
+
+    weights = [links.travel_time];
+    mapGraph = graph(s, t, weights);
     pause(0.001)
+    if sum([cars.arrived]) == length(cars)
+        break;
+    end
     
     % Stuff for recording
-    %frame = getframe(fig_handle);
-    %writeVideo(v, frame);
+    frame = getframe(fig_handle);
+    writeVideo(v, frame);
 
 end
+
+% Stuff for recording
 close(v)

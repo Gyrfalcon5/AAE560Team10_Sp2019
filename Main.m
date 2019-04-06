@@ -6,7 +6,7 @@
 
 clc, clear, close all;
 import classes.*
-
+rng(560)
 
 %% Initialize Simulation
 
@@ -90,9 +90,12 @@ for idx = num_cars:-1:1
     cars(idx).destination = randi([1, numel(map)]);
 end
 
+recording = 0;
 % Stuff for recording
-v = VideoWriter("../animation.avi", "Motion JPEG AVI");
-open(v);
+if recording == 1 
+    v = VideoWriter("../animation2.avi", "Motion JPEG AVI");
+    open(v);
+end
 
 while (1)
     nodeCars = cars([cars.onNode] == 1);
@@ -172,18 +175,23 @@ while (1)
     arrayfun(@(x) x.setDirection(directions{randi([1, length(directions)])}, map), currentCars)
     %}
 
-    weights = [links.travel_time];
-    mapGraph = graph(s, t, weights);
-    pause(0.001)
+    mapGraph = graph(s, t, [links.travel_time]);
+    
     if sum([cars.arrived]) == length(cars)
         break;
     end
     
     % Stuff for recording
-    frame = getframe(fig_handle);
-    writeVideo(v, frame);
+    if recording == 1
+        frame = getframe(fig_handle);
+        writeVideo(v, frame);
+    else
+        pause(0.001)
+    end
 
 end
 
 % Stuff for recording
-close(v)
+if recording == 1
+    close(v)
+end

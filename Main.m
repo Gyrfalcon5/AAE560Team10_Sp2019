@@ -80,7 +80,7 @@ end
 mapGraph = graph(s, t, weights);
 
 % Making cars
-num_cars = 100;
+num_cars = 10;
 for idx = num_cars:-1:1
     cars(idx) = Vehicle;
     cars(idx).coordinate = [randi([1,x_dim]) randi([1,y_dim])];
@@ -88,6 +88,34 @@ for idx = num_cars:-1:1
     cars(idx).onLink = 0;
     cars(idx).initializePlot();
     cars(idx).destination = randi([1, numel(map)]);
+end
+
+num_buses = 2;
+for idx = num_buses:-1:1
+    buses(idx) = Bus;
+    buses(idx).coordinate = [randi([1,x_dim]) randi([1,y_dim])];
+    buses(idx).onNode = 1;
+    buses(idx).onLink = 0;
+    buses(idx).initializePlot();
+    buses(idx).destinationCurrent = 1;
+    buses(idx).numberOfPeopleOn = 0;
+    buses(idx).destinationArray = [randi([1, numel(map)]),randi([1, numel(map)]),randi([1, numel(map)]),randi([1, numel(map)])];
+    buses(idx).destination = buses(idx).destinationArray(buses(idx).destinationCurrent);
+    buses(idx).waitTime = 0
+end
+
+num_people = 2;
+for idx = num_people:-1:1
+    people(idx) = Person;
+    people(idx).coordinate = [randi([1,x_dim]) randi([1,y_dim])];
+    people(idx).onNode = 1;
+    people(idx).onLink = 0;
+    people(idx).initializePlot();
+    people(idx).destination = randi([1, numel(map)]);
+    people(idx).onBus = 0;
+    people(idx).onCar = 0;
+    people(idx).walking = 1;
+    
 end
 
 recording = 0;
@@ -98,15 +126,49 @@ if recording == 1
 end
 
 while (1)
+    
+    
+    nodePeople = people([people.onNode] == 1);
+    linkPeople = people([people.onLink] == 1);
+    nodeBuses = buses([buses.onNode] == 1);
+    linkBuses = buses([buses.onLink] == 1);
     nodeCars = cars([cars.onNode] == 1);
     linkCars = cars([cars.onLink] == 1);
+    
+    
+    if ~isempty(linkPeople)
+        arrayfun(@(x) x.stepForward(mapGraph, map), linkPeople);
+    end
+    
+    if ~isempty(linkBuses)
+        arrayfun(@(x) x.stepForward(mapGraph, map), linkBuses);
+    end
+    
     if ~isempty(linkCars)
         arrayfun(@(x) x.stepForward(mapGraph, map), linkCars);
     end
     
+    
+    nodePeopleCoords = [nodePeople.coordinate];
+    nodePeopleX = nodePeopleCoords(1:2:end);
+    nodePeopleY = nodePeopleCoords(2:2:end);
+    
+    nodeBusesCoords = [nodeBuses.coordinate];
+    nodeBusesX = nodeBusesCoords(1:2:end);
+    nodeBusesY = nodeBusesCoords(2:2:end);
+    
     nodeCarsCoords = [nodeCars.coordinate];
     nodeCarsX = nodeCarsCoords(1:2:end);
     nodeCarsY = nodeCarsCoords(2:2:end);
+    
+    if ~isempty(nodePeople)
+        arrayfun(@(x) x.stepForward(mapGraph, map), nodePeople);
+    end
+    
+    if ~isempty(nodeBuses)
+        arrayfun(@(x) x.stepForward(mapGraph, map), nodeBuses);
+    end
+    
     if ~isempty(nodeCars)
         arrayfun(@(x) x.stepForward(mapGraph, map), nodeCars);
     end
@@ -177,9 +239,9 @@ while (1)
 
     mapGraph = graph(s, t, [links.travel_time]);
     
-    if sum([cars.arrived]) == length(cars)
-        break;
-    end
+%     if sum([cars.arrived]) == length(cars)
+%         break;
+%     end
     
     % Stuff for recording
     if recording == 1

@@ -24,6 +24,8 @@ for idx = 1:x_dim
         map(idx, jdx) = Node;
         map(idx, jdx).coordinate = [idx jdx];
         map(idx, jdx).id = count;
+        wait = randi([10 30]);
+        map(idx, jdx).wait_fun = @(x) wait;
         plotNode(map(idx, jdx))
         count = count + 1;
     end
@@ -80,7 +82,7 @@ end
 mapGraph = graph(s, t, weights);
 
 % Making cars
-num_cars = 100;
+num_cars = 750;
 for idx = num_cars:-1:1
     cars(idx) = Vehicle;
     cars(idx).coordinate = [randi([1,x_dim]) randi([1,y_dim])];
@@ -88,6 +90,9 @@ for idx = num_cars:-1:1
     cars(idx).onLink = 0;
     cars(idx).initializePlot();
     cars(idx).destination = randi([1, numel(map)]);
+    idle = rand()/4+0.25;
+    driving = 1/(rand()*10 + 20);
+    cars(idx).efficiency = @(speed) (idle + speed .* driving) ./ 3600;
 end
 
 recording = 0;
@@ -110,71 +115,9 @@ while (1)
     if ~isempty(nodeCars)
         arrayfun(@(x) x.stepForward(mapGraph, map), nodeCars);
     end
-    % These blocks assign random directions without making anything go out
-    % of bounds. This is complicated now but will not be needed so much
-    % later
-    % Cars that are not on any edge
-    %{
-    currentCars = nodeCars(nodeCarsX < x_dim &...
-                           nodeCarsY < y_dim &...
-                           nodeCarsX > 1 &...
-                           nodeCarsY > 1);
-    directions = {'n', 's', 'e', 'w'};
-    arrayfun(@(x) x.setDirection(directions{randi([1, length(directions)])}, map), currentCars)
     
-    % Cars on north (right) edge
-    currentCars = nodeCars(nodeCarsX == x_dim &...
-                           nodeCarsY < y_dim &...
-                           nodeCarsX > 1 &...
-                           nodeCarsY > 1);
-    directions = {'s', 'e', 'w'};
-    arrayfun(@(x) x.setDirection(directions{randi([1, length(directions)])}, map), currentCars)
-    
-    % Cars on west (top) edge
-    currentCars = nodeCars(nodeCarsX < x_dim &...
-                           nodeCarsY == y_dim &...
-                           nodeCarsX > 1 &...
-                           nodeCarsY > 1);
-    directions = {'s', 'e', 'n'};
-    arrayfun(@(x) x.setDirection(directions{randi([1, length(directions)])}, map), currentCars)
-    
-    % Cars on south (left) edge
-    currentCars = nodeCars(nodeCarsX < x_dim &...
-                           nodeCarsY < y_dim &...
-                           nodeCarsX == 1 &...
-                           nodeCarsY > 1);
-    directions = {'w', 'e', 'n'};
-    arrayfun(@(x) x.setDirection(directions{randi([1, length(directions)])}, map), currentCars)
-    
-    % Cars on east (bottom) edge
-    currentCars = nodeCars(nodeCarsX < x_dim &...
-                           nodeCarsY < y_dim &...
-                           nodeCarsX > 1 &...
-                           nodeCarsY == 1);
-    directions = {'w', 's', 'n'};
-    arrayfun(@(x) x.setDirection(directions{randi([1, length(directions)])}, map), currentCars)
-    
-    % Cars on southeast corner
-    currentCars = nodeCars(nodeCarsX == 1 & nodeCarsY == 1);
-    directions = {'w', 'n'};
-    arrayfun(@(x) x.setDirection(directions{randi([1, length(directions)])}, map), currentCars)
-    
-    % Cars on northeast corner
-    currentCars = nodeCars(nodeCarsX == x_dim & nodeCarsY == 1);
-    directions = {'w', 's'};
-    arrayfun(@(x) x.setDirection(directions{randi([1, length(directions)])}, map), currentCars)
-    
-    % Cars on southwest corner
-    currentCars = nodeCars(nodeCarsX == 1 & nodeCarsY == y_dim);
-    directions = {'n', 'e'};
-    arrayfun(@(x) x.setDirection(directions{randi([1, length(directions)])}, map), currentCars)
-    
-    % Cars on nortwest corner
-    currentCars = nodeCars(nodeCarsX == x_dim & nodeCarsY == y_dim);
-    directions = {'e', 's'};
-    arrayfun(@(x) x.setDirection(directions{randi([1, length(directions)])}, map), currentCars)
-    %}
-
+    % This needs to be better when nodes don't take constant time
+    travel_times = [links.travel_time] + nodes(1).wait_time;
     mapGraph = graph(s, t, [links.travel_time]);
     
     if sum([cars.arrived]) == length(cars)
@@ -195,3 +138,20 @@ end
 if recording == 1
     close(v)
 end
+
+figure;
+hold on;
+for car = cars
+    plot(car.speeds)
+end
+
+speeds = [cars.speeds];
+figure;
+histogram(speeds)
+
+for idx = length(cars):-1:1
+    fuel(idx) = sum(cars(idx).efficiency(cars(idx).speeds));
+end
+emissions = fuel.* 8.887;
+figure;
+histogram(emissions)

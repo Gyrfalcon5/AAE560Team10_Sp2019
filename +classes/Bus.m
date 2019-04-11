@@ -1,4 +1,4 @@
-classdef Vehicle < handle
+classdef Bus < handle
     % Class that defines a vehicle
 
     properties
@@ -8,8 +8,12 @@ classdef Vehicle < handle
         graphicsHandle
         xPath
         yPath
-        destination % Will be the node id
+        destination
+        destinationArray % Will be an array of node IDs
+        destinationCurrent
         arrived
+        numberOfPeopleOn
+        waitTime
     end
     
     methods
@@ -39,8 +43,14 @@ classdef Vehicle < handle
         % to plot things
         function initializePlot(obj)
             
+            
+            greyHolder = 192/255;
+            colorGrey = [greyHolder,greyHolder,greyHolder];
             obj.graphicsHandle = plot(obj.coordinate(1),obj.coordinate(2),...
-                                      'ko', 'Markerfacecolor', 'k');
+                                      'ko', 'Markerfacecolor',colorGrey);
+            
+%             obj.graphicsHandle = plot(obj.coordinate(1),obj.coordinate(2),...
+%                                       'ko', 'Markerfacecolor', 'k');
             
         end
         
@@ -117,11 +127,31 @@ classdef Vehicle < handle
                 % This still has problems, need to fix it somehow
                 if length(path) == 1
                     obj.arrived = 1;
-                    return
+                else
+                    next_node = map([map.id] == path(2));
                 end
-                next_node = map([map.id] == path(2));
-                if next_node.id == current_node.id
-                    obj.arrived = 1;
+                
+%                 if next_node.id == current_node.id
+%                     obj.arrived = 1;
+%                 end
+                
+                if(obj.arrived == 1)
+                    
+                    if(obj.waitTime <= 25)
+                       obj.waitTime = obj.waitTime + 1;
+                       return
+                    end
+                    
+                    numOfdestination = size(obj.destinationArray);
+                    if(numOfdestination(2) == obj.destinationCurrent)
+                        obj.destinationCurrent = 1;
+                    
+                    elseif(numOfdestination(2) ~= obj.destinationCurrent)
+                        obj.destinationCurrent = obj.destinationCurrent + 1;                        
+                    end
+                    obj.destination = obj.destinationArray(obj.destinationCurrent);
+                    obj.arrived = 0;
+                    obj.waitTime = 0;
                     return
                 end
                 

@@ -14,6 +14,10 @@ classdef Bus < handle
         arrived
         numberOfPeopleOn
         waitTime
+        speeds % Records the velocity of the bus over time for efficiecy 
+               % calculations
+        efficiency % function that determines the emissions based on speed
+        routeID % Tells you what route the bus is on
     end
     
     methods
@@ -160,6 +164,10 @@ classdef Bus < handle
                                      next_node.coordinate(1), link.travel_time);
                 obj.yPath = linspace(current_node.coordinate(2),...
                                      next_node.coordinate(2), link.travel_time);
+                obj.speeds = [obj.speeds zeros(1, current_node.wait_time)];
+                obj.speeds = [obj.speeds norm([obj.xPath(2) - obj.xPath(1), obj.yPath(2) - obj.yPath(1)])*ones(1,link.travel_time)];                
+                obj.yPath = [ones(1,current_node.wait_time)*obj.yPath(1) obj.yPath];
+                obj.xPath = [ones(1,current_node.wait_time)*obj.xPath(1) obj.xPath];
                 obj.stepForward();
                 
             else

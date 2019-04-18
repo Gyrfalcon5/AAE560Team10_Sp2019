@@ -81,139 +81,141 @@ end
 
 mapGraph = graph(s, t, weights);
 
-% Making cars
-num_cars = 10;
-for idx = num_cars:-1:1
-    cars(idx) = Vehicle;
-    cars(idx).coordinate = [randi([1,x_dim]) randi([1,y_dim])];
-    cars(idx).onNode = 1;
-    cars(idx).onLink = 0;
-    cars(idx).initializePlot();
-    cars(idx).destination = randi([1, numel(map)]);
-    idle = rand()/4+0.25;
-    driving = 1/(rand()*10 + 20);
-    cars(idx).efficiency = @(speed) (idle + speed .* driving) ./ 3600;
-end
-
-num_buses = 2;
+load("./busRoutes.mat")
+num_buses = 2*length(busRoutes);
 for idx = num_buses:-1:1
     buses(idx) = Bus;
-    buses(idx).coordinate = [randi([1,x_dim]) randi([1,y_dim])];
     buses(idx).onNode = 1;
     buses(idx).onLink = 0;
-    buses(idx).initializePlot();
     buses(idx).destinationCurrent = 1;
     buses(idx).numberOfPeopleOn = 0;
-    buses(idx).destinationArray = [randi([1, numel(map)]),randi([1, numel(map)]),randi([1, numel(map)]),randi([1, numel(map)])];
+    % Have to get a bus going each way
+    if mod(idx, 2) == 0
+        buses(idx).destinationArray = busRoutes{ceil(idx/2)};
+    else
+        buses(idx).destinationArray = flip(busRoutes{ceil(idx/2)});
+    end
+    buses(idx).coordinate = [map(buses(idx).destinationArray(1)).coordinate];
+    buses(idx).initializePlot();
     buses(idx).destination = buses(idx).destinationArray(buses(idx).destinationCurrent);
-    buses(idx).waitTime = 0
+    buses(idx).waitTime = 0;
+    buses(idx).routeID = ceil(idx/2);
+    idle = rand()/4+0.25;
+    driving = 1/(normrnd(4, 1)); % Std deviation is made up
+    buses(idx).efficiency = @(speed) (idle + speed .* driving) ./ 3600;
 end
 
-num_people = 2;
+% Residential is the bottom left quadrant
+res_x = 5;
+res_y = 5;
+map_coords = [map.coordinate];
+map_x = map_coords(1:2:end);
+map_y = map_coords(2:2:end);
+destination_nodes = map(map_x > res_x | map_y > res_y); 
+
+num_people = 750;
 for idx = num_people:-1:1
     people(idx) = Person;
-    people(idx).coordinate = [randi([1,x_dim]) randi([1,y_dim])];
+    people(idx).coordinate = [randi([1,res_x]) randi([1,res_y])];
+    people(idx).home = map(people(idx).coordinate(1), people(idx).coordinate(2)).id;
     people(idx).onNode = 1;
     people(idx).onLink = 0;
     people(idx).initializePlot();
-    people(idx).destination = randi([1, numel(map)]);
+    people(idx).destination = destination_nodes(randi([1, numel(destination_nodes)])).id;
     people(idx).onBus = 0;
     people(idx).onCar = 0;
-    people(idx).walking = 1;
+    people(idx).walking = 0;
+    people(idx).vehicle = Vehicle;
+    people(idx).vehicle.coordinate = [-1, -1];
+    people(idx).vehicle.onNode = 1;
+    people(idx).vehicle.onLink = 0;
+    people(idx).vehicle.initializePlot();
+    idle = rand()/4+0.25;
+    driving = 1/(normrnd(24, 5)); % Std deviation is made up
+    people(idx).vehicle.efficiency = @(speed) (idle + speed .* driving) ./ 3600;
     
 end
 
+arrayfun(@(x) x.decideMode(mapGraph, map), people);
+
 recording = 0;
+visualization = 0;
 % Stuff for recording
 if recording == 1 
     v = VideoWriter("../animation2.avi", "Motion JPEG AVI");
     open(v);
 end
 
+commuting_home = 0; % Tells us whether we've done evening rush hour
+
 while (1)
-    
-    
-    nodePeople = people([people.onNode] == 1);
-    linkPeople = people([people.onLink] == 1);
-    nodeBuses = buses([buses.onNode] == 1);
-    linkBuses = buses([buses.onLink] == 1);
-    nodeCars = cars([cars.onNode] == 1);
-    linkCars = cars([cars.onLink] == 1);
-    
-    
-    if ~isempty(linkPeople)
-        arrayfun(@(x) x.stepForward(mapGraph, map), linkPeople);
+
+    for idx = 1:num_people
+        people(idx).stepForward(mapGraph, map);
+    end
+
+    for idx = 1:num_buses
+        buses(idx).stepForward(mapGraph, map);
+    end
+
+    travel_times = [];
+    for idx = length(links):-1:1
+        travel_times(idx) = links(idx).link_weight;
     end
     
-    if ~isempty(linkBuses)
-        arrayfun(@(x) x.stepForward(mapGraph, map), linkBuses);
+    mapGraph = graph(s, t, travel_times);
+    
+    if sum([people.arrived]) == length(people)
+        if commuting_home
+            break;
+        else
+            commuting_home = 1;
+            for idx = 1:length(people)
+                people(idx).destination = people(idx).home;
+                people(idx).arrived = 0;
+                people(idx).vehicle.arrived = 0;
+                people(idx).decideMode(mapGraph, map);
+            end
+        end
     end
-    
-    if ~isempty(linkCars)
-        arrayfun(@(x) x.stepForward(mapGraph, map), linkCars);
-    end
-    
-    
-    nodePeopleCoords = [nodePeople.coordinate];
-    nodePeopleX = nodePeopleCoords(1:2:end);
-    nodePeopleY = nodePeopleCoords(2:2:end);
-    
-    nodeBusesCoords = [nodeBuses.coordinate];
-    nodeBusesX = nodeBusesCoords(1:2:end);
-    nodeBusesY = nodeBusesCoords(2:2:end);
-    
-    nodeCarsCoords = [nodeCars.coordinate];
-    nodeCarsX = nodeCarsCoords(1:2:end);
-    nodeCarsY = nodeCarsCoords(2:2:end);
-    
-    if ~isempty(nodePeople)
-        arrayfun(@(x) x.stepForward(mapGraph, map), nodePeople);
-    end
-    
-    if ~isempty(nodeBuses)
-        arrayfun(@(x) x.stepForward(mapGraph, map), nodeBuses);
-    end
-    
-    if ~isempty(nodeCars)
-        arrayfun(@(x) x.stepForward(mapGraph, map), nodeCars);
-    end
-    
-    % This needs to be better when nodes don't take constant time
-    travel_times = [links.travel_time] + nodes(1).wait_time;
-    mapGraph = graph(s, t, [links.travel_time]);
-    
-%     if sum([cars.arrived]) == length(cars)
-%         break;
-%     end
     
     % Stuff for recording
     if recording == 1
         frame = getframe(fig_handle);
         writeVideo(v, frame);
-    else
-        pause(0.001)
+    elseif visualization == 1
+        drawnow limitrate
     end
 
 end
-
+%movie(fig_handle, F)
 % Stuff for recording
 if recording == 1
     close(v)
 end
+cars = [people.vehicle];
+carSpeeds = [cars.speeds];
+busSpeeds = [buses.speeds];
+speeds = [carSpeeds busSpeeds];
 
-figure;
-hold on;
-for car = cars
-    plot(car.speeds)
-end
-
-speeds = [cars.speeds];
 figure;
 histogram(speeds)
+title("Histogram of Vehicle Speeds")
+xlabel("Speed (blocks/sec)")
+ylabel("Number of vehicle seconds")
 
 for idx = length(cars):-1:1
-    fuel(idx) = sum(cars(idx).efficiency(cars(idx).speeds));
+    gas(idx) = sum(cars(idx).efficiency(cars(idx).speeds));
 end
-emissions = fuel.* 8.887;
+for idx = length(buses)+length(cars):-1:length(cars)+1
+    gas(idx) = sum(buses(idx-length(cars)).efficiency(buses(idx-length(cars)).speeds));
+end
+    
+gasEmissions = 8.887; % kg CO2 / gal
+emissions = gas.* gasEmissions;
 figure;
 histogram(emissions)
+title("Histogram of Vehicle Emissions")
+xlabel("kg of CO_2")
+ylabel("Number of vehicles")
+sum(emissions)

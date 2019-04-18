@@ -95,10 +95,7 @@ classdef Vehicle < handle
                 obj.onNode = 0;
                 obj.xPath = obj.xPath(2:end);
                 obj.yPath = obj.yPath(2:end);
-                
-            end
-            
-            
+            end    
             
         end
     end

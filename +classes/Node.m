@@ -7,6 +7,7 @@ classdef Node < handle
         wait_fun % Anonymous function that defines wait time
         users % List of vehicle at the node
         id % Identifies this node
+        busHere
     end
 
     properties (Dependent)
@@ -17,14 +18,6 @@ classdef Node < handle
         % For plotting individual nodes
         function plotNode(obj)
             plot(obj.coordinate(1), obj.coordinate(2),'b o')
-        end
-        
-        % For fast plotting of identical nodes
-        function bulkNodePlot(objs)
-            coords = [objs.coordinate];
-            x_coords = coords(1:2:end);
-            y_coords = coords(2:2:end);
-            plot(x_coords, y_coords, 'b o');
         end
 
         function time = get.wait_time(obj)
@@ -53,3 +46,5 @@ classdef Node < handle
         end
     end
 end
+
+    

@@ -17,6 +17,9 @@ classdef Person < handle
                 % person
         home % Coordinates of the nede that this person considers to be
              % their home
+        personID
+        numOfBusStops
+        numOfBusStopsIDX
     end
     
     methods
@@ -51,7 +54,7 @@ classdef Person < handle
             
         end
         
-        function stepForward(obj, mapGraph, map)
+        function stepForward(obj, mapGraph, map, buses)
             if obj.arrived
                 %do nothing
                 return
@@ -81,9 +84,32 @@ classdef Person < handle
                 obj.onNode = 1;
                 current_node = map(obj.coordinate(1), obj.coordinate(2));
                 path = shortestpath(mapGraph, current_node.id, obj.destination);
+                % This still has problems, need to fix it somehow
+                
                 
                 if length(path) == 1
-                    obj.arrived = 1;                  
+                    obj.arrived = 1;
+                    if(obj.onBus == 0)
+                        if(map(obj.coordinate(1),obj.coordinate(2)).busHere == 1)
+                            obj.onBus = 1;
+                            obj.walking = 0;
+                            num_buses = length(buses);
+                            for idx = num_buses:-1:1
+                                if(buses(idx).coordinate(1) == obj.coordinate(1) && buses(idx).coordinate(2) == obj.coordinate(2))
+                                    buses(idx).numberOfPeopleOn = buses(idx).numberOfPeopleOn + 1;
+                                    buses(idx).arrayOfPeople(buses(idx).numberOfPeopleOn) = obj.personID;
+                                    break;
+                                end
+
+                            end
+                            if(obj.onBus == 1)
+                                obj.coordinate(1) = -1;
+                                obj.coordinate(2) = -1;
+                                set(obj.graphicsHandle,'XData',obj.coordinate(1),'YData',obj.coordinate(2));
+                                disp("hi");
+                            end
+                        end
+                    end
                     return
                 end
                 

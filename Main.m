@@ -26,6 +26,7 @@ for idx = 1:x_dim
         map(idx, jdx).id = count;
         wait = randi([10 30]);
         map(idx, jdx).wait_fun = @(x) wait;
+        map(idx, jdx).busHere = 0;
         plotNode(map(idx, jdx))
         count = count + 1;
     end
@@ -85,8 +86,10 @@ load("./busRoutes.mat")
 num_buses = 2*length(busRoutes);
 for idx = num_buses:-1:1
     buses(idx) = Bus;
+    buses(idx).coordinate = [randi([1,x_dim]) randi([1,y_dim])];
     buses(idx).onNode = 1;
     buses(idx).onLink = 0;
+    buses(idx).initializePlot();
     buses(idx).destinationCurrent = 1;
     buses(idx).numberOfPeopleOn = 0;
     % Have to get a bus going each way
@@ -103,6 +106,7 @@ for idx = num_buses:-1:1
     idle = rand()/4+0.25;
     driving = 1/(normrnd(4, 1)); % Std deviation is made up
     buses(idx).efficiency = @(speed) (idle + speed .* driving) ./ 3600;
+    buses(idx).arrayOfPeople = [];
 end
 
 % Residential is the bottom left quadrant
@@ -133,6 +137,10 @@ for idx = num_people:-1:1
     idle = rand()/4+0.25;
     driving = 1/(normrnd(24, 5)); % Std deviation is made up
     people(idx).vehicle.efficiency = @(speed) (idle + speed .* driving) ./ 3600;
+    people(idx).walking = 0;
+    people(idx).personID = idx;
+    people(idx).numOfBusStops = 2;
+    people(idx).numOfBusStopsIDX = people(idx).numOfBusStops;
     
 end
 
@@ -151,11 +159,11 @@ commuting_home = 0; % Tells us whether we've done evening rush hour
 while (1)
 
     for idx = 1:num_people
-        people(idx).stepForward(mapGraph, map);
+        people(idx).stepForward(mapGraph, map, buses);
     end
 
     for idx = 1:num_buses
-        buses(idx).stepForward(mapGraph, map);
+        buses(idx).stepForward(mapGraph, map, people);
     end
 
     travel_times = [];
@@ -188,7 +196,7 @@ while (1)
     end
 
 end
-%movie(fig_handle, F)
+
 % Stuff for recording
 if recording == 1
     close(v)

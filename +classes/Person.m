@@ -15,6 +15,8 @@ classdef Person < handle
         walking
         vehicle % This holds the reference to the vehicle belonging to the
                 % person
+        home % Coordinates of the nede that this person considers to be
+             % their home
     end
     
     methods
@@ -50,7 +52,10 @@ classdef Person < handle
         end
         
         function stepForward(obj, mapGraph, map)
-            if obj.onCar
+            if obj.arrived
+                %do nothing
+                return
+            elseif obj.onCar
                 if obj.vehicle.arrived
                     obj.coordinate = obj.vehicle.coordinate;
                     set(obj.graphicsHandle,'XData',obj.coordinate(1),'YData',obj.coordinate(2));
@@ -60,44 +65,46 @@ classdef Person < handle
                 else
                     obj.vehicle.stepForward(mapGraph, map);
                 end
-                return
-            elseif obj.arrived
-                %do nothing
-            end
-            if ~isempty(obj.xPath)
-                set(obj.graphicsHandle,'XData',obj.xPath(1),'YData',obj.yPath(1));
+            elseif ~isempty(obj.xPath)
+                if obj.xPath(1) ~= obj.coordinate(1) || obj.yPath(1) ~= obj.coordinate(2)
+                   set(obj.graphicsHandle,'XData',obj.xPath(1),'YData',obj.yPath(1));
+                end
                 obj.coordinate(1) = obj.xPath(1);
                 obj.coordinate(2) = obj.yPath(1);
             end
-            % TODO add an arrival flag
-            if (length(obj.xPath) < 2)
+            % Should find a way to make these checks more compact, but as
+            % it stands now they need to be separate so that when it is
+            % just starting out it will initialize the path properly, as
+            % well as cover the case of when it is nearing a node.
+            if (length(obj.xPath) < 2 & obj.walking)
                 obj.onLink = 0;
                 obj.onNode = 1;
                 current_node = map(obj.coordinate(1), obj.coordinate(2));
                 path = shortestpath(mapGraph, current_node.id, obj.destination);
-                % This still has problems, need to fix it somehow
-                
                 
                 if length(path) == 1
-                    obj.arrived = 1;
-                    obj.coordinate = obj.vehicle.coordinate;
-                    
+                    obj.arrived = 1;                  
                     return
                 end
+                
                 next_node = map([map.id] == path(2));
                 if next_node.id == current_node.id
                     obj.arrived = 1;
+                    obj.walking = 0;
                     return
                 end
                 
                 link = intersect([current_node.links{:}], [next_node.links{:}]);
+                linkTime = link.travel_time * 6;
                 obj.xPath = linspace(current_node.coordinate(1),...
-                                     next_node.coordinate(1), link.travel_time);
+                                     next_node.coordinate(1), linkTime);
                 obj.yPath = linspace(current_node.coordinate(2),...
-                                     next_node.coordinate(2), link.travel_time);
-                obj.stepForward();
+                                     next_node.coordinate(2), linkTime);
+                obj.yPath = [ones(1,current_node.wait_time)*obj.yPath(1) obj.yPath];
+                obj.xPath = [ones(1,current_node.wait_time)*obj.xPath(1) obj.xPath];
+                obj.stepForward(mapGraph, map);
                 
-            else
+            elseif obj.walking
                 obj.onLink = 1;
                 obj.onNode = 0;
                 obj.xPath = obj.xPath(2:end);
@@ -110,17 +117,28 @@ classdef Person < handle
         
         function decideMode(obj, mapGraph, map)
             % Should run some calculations on how to get to destination,
-            % and should get ready for that to happen. Right now it always
-            % picks cars.
+            % and should get ready for that to happen. Right now it decides
+            % randomly
             
-            % Car Case
-            obj.vehicle.coordinate = obj.coordinate;
-            obj.vehicle.destination = obj.destination;
-            obj.vehicle.stepForward(mapGraph, map);
-            obj.onCar = 1;
-            obj.onLink = 0;
-            obj.onNode = 0;
-            set(obj.graphicsHandle,'XData',-1,'YData',-1);
+            decision = rand();
+            if decision < 0.5
+                % Car Case
+                obj.vehicle.coordinate = obj.coordinate;
+                obj.vehicle.destination = obj.destination;
+                obj.vehicle.stepForward(mapGraph, map);
+                obj.onCar = 1;
+                obj.onLink = 0;
+                obj.onNode = 0;
+                set(obj.graphicsHandle,'XData',-1,'YData',-1);
+                set(obj.vehicle.graphicsHandle,...
+                    'XData', obj.vehicle.coordinate(1),...
+                    'YData', obj.vehicle.coordinate(2));
+            else
+                obj.onLink = 0;
+                obj.onNode = 1;
+                obj.walking = 1;
+                
+            end
             
             
             

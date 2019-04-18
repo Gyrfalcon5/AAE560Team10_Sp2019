@@ -13,6 +13,8 @@ classdef Link < handle
 
     properties (Dependent)
         travel_time % Will have a function that calculates travel time
+        link_weight % Like travel time but it also includes the nodes in 
+                    % a slightly different way
 
     end
 
@@ -21,6 +23,11 @@ classdef Link < handle
         % TODO make this actually use travel_fun to calculate time
         function time = get.travel_time(obj)
             time = obj.travel_fun(obj.num_vehicles);
+        end
+        
+        function time = get.link_weight(obj)
+            time = obj.travel_time +...
+                (obj.nodes(1).wait_time + obj.nodes(2).wait_time)/2;
         end
         
         % Constructor

@@ -55,7 +55,9 @@ classdef Vehicle < handle
                 if obj.coordinate(1) == obj.xPath(1) & obj.coordinate(2) == obj.yPath(1)
                     
                 else
-                    set(obj.graphicsHandle,'XData',obj.xPath(1),'YData',obj.yPath(1));
+                    if obj.xPath(1) ~= obj.coordinate(1) || obj.yPath(1) ~= obj.coordinate(2)
+                        set(obj.graphicsHandle,'XData',obj.xPath(1),'YData',obj.yPath(1));
+                    end
                     obj.coordinate(1) = obj.xPath(1);
                     obj.coordinate(2) = obj.yPath(1);
                 end

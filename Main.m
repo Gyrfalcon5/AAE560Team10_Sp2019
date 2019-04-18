@@ -105,17 +105,26 @@ for idx = num_buses:-1:1
     buses(idx).efficiency = @(speed) (idle + speed .* driving) ./ 3600;
 end
 
-num_people = 75;
+% Residential is the bottom left quadrant
+res_x = 5;
+res_y = 5;
+map_coords = [map.coordinate];
+map_x = map_coords(1:2:end);
+map_y = map_coords(2:2:end);
+destination_nodes = map(map_x > res_x | map_y > res_y); 
+
+num_people = 750;
 for idx = num_people:-1:1
     people(idx) = Person;
-    people(idx).coordinate = [randi([1,x_dim]) randi([1,y_dim])];
+    people(idx).coordinate = [randi([1,res_x]) randi([1,res_y])];
+    people(idx).home = map(people(idx).coordinate(1), people(idx).coordinate(2)).id;
     people(idx).onNode = 1;
     people(idx).onLink = 0;
     people(idx).initializePlot();
-    people(idx).destination = randi([1, numel(map)]);
+    people(idx).destination = destination_nodes(randi([1, numel(destination_nodes)])).id;
     people(idx).onBus = 0;
     people(idx).onCar = 0;
-    people(idx).walking = 1;
+    people(idx).walking = 0;
     people(idx).vehicle = Vehicle;
     people(idx).vehicle.coordinate = [-1, -1];
     people(idx).vehicle.onNode = 1;
@@ -130,70 +139,56 @@ end
 arrayfun(@(x) x.decideMode(mapGraph, map), people);
 
 recording = 0;
+visualization = 0;
 % Stuff for recording
 if recording == 1 
     v = VideoWriter("../animation2.avi", "Motion JPEG AVI");
     open(v);
 end
 
+commuting_home = 0; % Tells us whether we've done evening rush hour
+
 while (1)
-    
-    carPeople = people([people.onCar] == 1);
-    nodePeople = people([people.onNode] == 1);
-    linkPeople = people([people.onLink] == 1);
-    nodeBuses = buses([buses.onNode] == 1);
-    linkBuses = buses([buses.onLink] == 1);
-    
-    if ~isempty(carPeople)
-        arrayfun(@(x) x.stepForward(mapGraph, map), carPeople);
+
+    for idx = 1:num_people
+        people(idx).stepForward(mapGraph, map);
     end
-    
-    if ~isempty(linkPeople)
-        arrayfun(@(x) x.stepForward(mapGraph, map), linkPeople);
+
+    for idx = 1:num_buses
+        buses(idx).stepForward(mapGraph, map);
     end
-    
-    if ~isempty(linkBuses)
-        arrayfun(@(x) x.stepForward(mapGraph, map), linkBuses);
-    end
-    
-    nodePeopleCoords = [nodePeople.coordinate];
-    nodePeopleX = nodePeopleCoords(1:2:end);
-    nodePeopleY = nodePeopleCoords(2:2:end);
-    
-    nodeBusesCoords = [nodeBuses.coordinate];
-    nodeBusesX = nodeBusesCoords(1:2:end);
-    nodeBusesY = nodeBusesCoords(2:2:end);
-    
-    if ~isempty(nodePeople)
-        arrayfun(@(x) x.stepForward(mapGraph, map), nodePeople);
-    end
-    
-    if ~isempty(nodeBuses)
-        arrayfun(@(x) x.stepForward(mapGraph, map), nodeBuses);
-    end
-    
+
     travel_times = [];
     for idx = length(links):-1:1
-        travel_times(idx) = links(idx).travel_time...
-                            + (links(idx).nodes(1).wait_time...
-                            + links(idx).nodes(2).wait_time) / 2;
+        travel_times(idx) = links(idx).link_weight;
     end
+    
     mapGraph = graph(s, t, travel_times);
     
     if sum([people.arrived]) == length(people)
-        break;
+        if commuting_home
+            break;
+        else
+            commuting_home = 1;
+            for idx = 1:length(people)
+                people(idx).destination = people(idx).home;
+                people(idx).arrived = 0;
+                people(idx).vehicle.arrived = 0;
+                people(idx).decideMode(mapGraph, map);
+            end
+        end
     end
     
     % Stuff for recording
     if recording == 1
         frame = getframe(fig_handle);
         writeVideo(v, frame);
-    else
-        pause(0.001)
+    elseif visualization == 1
+        drawnow limitrate
     end
 
 end
-
+%movie(fig_handle, F)
 % Stuff for recording
 if recording == 1
     close(v)

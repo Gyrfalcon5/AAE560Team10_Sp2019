@@ -10,8 +10,6 @@ classdef Vehicle < handle
         yPath
         destination % Will be the node id
         arrived
-        speeds % records the speed of the car over time
-        efficiency % function that determines the emissions based on speed
     end
     
     methods
@@ -46,84 +44,19 @@ classdef Vehicle < handle
             
         end
         
-        % This is all we'll use for now with the random business, once we
-        % have pathing this can get rolled in to continue its current task
-        function setDirection(obj, direction, map)
-            
-            % Check to make sure we aren't adding a waypoint at a stupid
-            % time
-            if (obj.onLink == 1)
-                ME = MException("Vehicle:cantAddWaypoint",...
-             "The Vehicle is on a link and can't accept a new destination");
-                throw(ME)
-            end
-            
-            curr_node = map(obj.coordinate(1), obj.coordinate(2));
-            
-            % This finds the node you want to get to and complains if you
-            % tell it to go to a node that doesn't exist
-            switch direction
-                case 'n'
-                    if (obj.coordinate(1)+1 > size(map, 1))
-                         ME = MException("Vehicle:cantAddWaypoint",...
-                                        "The destination is out of bounds: %s", 'n');
-                         throw(ME)
-                    end
-                    next_node = map(obj.coordinate(1)+1, obj.coordinate(2));
-                case 's'
-                    if (obj.coordinate(1)-1 < 1)
-                         ME = MException("Vehicle:cantAddWaypoint",...
-                                        "The destination is out of bounds: %s", 's');
-                         throw(ME)
-                    end
-                    next_node = map(obj.coordinate(1)-1, obj.coordinate(2));
-                case 'w'
-                     if (obj.coordinate(2)+1 < 1)
-                         ME = MException("Vehicle:cantAddWaypoint",...
-                                        "The destination is out of bounds: %s", 'w');
-                         throw(ME)
-                    end
-                    next_node = map(obj.coordinate(1), obj.coordinate(2)+1);
-                case 'e'
-                    if (obj.coordinate(2)-1 > size(map, 2))
-                         ME = MException("Vehicle:cantAddWaypoint",...
-                                        "The destination is out of bounds: %s", 'e');
-                         throw(ME)
-                    end
-                    next_node = map(obj.coordinate(1), obj.coordinate(2)-1);
-            end
-            
-            % Find our link and get set up for plotting accounting for the
-            % travel time
-            % TODO add extra time for moving through nodes
-            link = intersect([curr_node.links{:}], [next_node.links{:}]);
-            obj.xPath = linspace(curr_node.coordinate(1),...
-                                 next_node.coordinate(1), link.travel_time);
-            obj.yPath = linspace(curr_node.coordinate(2),...
-                                 next_node.coordinate(2), link.travel_time);
-            obj.stepForward()
-        end
-        
         function stepForward(obj, mapGraph, map)
-            if obj.arrived == 1
-                return
-            end
             if ~isempty(obj.xPath)
-                
-                if obj.coordinate(1) == obj.xPath(1) & obj.coordinate(2) == obj.yPath(1)
-                    
-                else
-                    set(obj.graphicsHandle,'XData',obj.xPath(1),'YData',obj.yPath(1));
-                    obj.coordinate(1) = obj.xPath(1);
-                    obj.coordinate(2) = obj.yPath(1);
-                end
+                set(obj.graphicsHandle,'XData',obj.xPath(1),'YData',obj.yPath(1));
+                obj.coordinate(1) = obj.xPath(1);
+                obj.coordinate(2) = obj.yPath(1);
             end
-
+            % TODO add an arrival flag
             if (length(obj.xPath) < 2)
                 obj.onLink = 0;
                 obj.onNode = 1;
                 current_node = map(obj.coordinate(1), obj.coordinate(2));
                 path = shortestpath(mapGraph, current_node.id, obj.destination);
+                % This still has problems, need to fix it somehow
                 if length(path) == 1
                     obj.arrived = 1;
                     return
@@ -137,23 +70,16 @@ classdef Vehicle < handle
                 link = intersect([current_node.links{:}], [next_node.links{:}]);
                 obj.xPath = linspace(current_node.coordinate(1),...
                                      next_node.coordinate(1), link.travel_time);
-                obj.xPath = [ones(1,current_node.wait_time)*obj.xPath(1) obj.xPath];
                 obj.yPath = linspace(current_node.coordinate(2),...
                                      next_node.coordinate(2), link.travel_time);
-                obj.yPath = [ones(1,current_node.wait_time)*obj.yPath(1) obj.yPath];
-                obj.speeds = [obj.speeds zeros(1, current_node.wait_time)];
-                obj.speeds = [obj.speeds norm([obj.xPath(2) - obj.xPath(1), obj.yPath(2) - obj.yPath(1)])*ones(1,link.travel_time)];
-                obj.stepForward(mapGraph, map);
+                obj.stepForward();
                 
             else
                 obj.onLink = 1;
                 obj.onNode = 0;
                 obj.xPath = obj.xPath(2:end);
                 obj.yPath = obj.yPath(2:end);
-                
-            end
-            
-            
+            end    
             
         end
     end

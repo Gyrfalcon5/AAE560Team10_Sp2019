@@ -54,18 +54,5 @@ classdef Link < handle
             plot(x, y, 'b');
         end
         
-        % Plots many nodes quickly
-        function bulkLinkPlot(objs)
-            nodes = [objs.nodes];
-            starts = [nodes(1:2:end).coordinate]; 
-            ends = [nodes(2:2:end).coordinate];
-            start_x = starts(1:2:end);
-            end_x = ends(1:2:end);
-            start_y = starts(2:2:end);
-            end_y = ends(2:2:end);
-            x = [start_x ; end_x];
-            y = [start_y ; end_y];
-            plot(x, y, 'b')
-        end
     end
 end

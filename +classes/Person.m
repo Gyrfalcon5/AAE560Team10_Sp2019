@@ -13,6 +13,9 @@ classdef Person < handle
         onBus
         onCar
         walking
+        personID
+        numOfBusStops
+        numOfBusStopsIDX
     end
     
     methods
@@ -41,71 +44,20 @@ classdef Person < handle
         % Initializes the graphics handle, don't call this until you want
         % to plot things
         function initializePlot(obj)
+            if(obj.numOfBusStops == 4)
+                obj.graphicsHandle = plot(obj.coordinate(1),obj.coordinate(2),...
+                                          'ko', 'Markerfacecolor', 'y');
             
-            obj.graphicsHandle = plot(obj.coordinate(1),obj.coordinate(2),...
-                                      'ko', 'Markerfacecolor', 'g');
-            
+            elseif(obj.numOfBusStops == 3)
+                obj.graphicsHandle = plot(obj.coordinate(1),obj.coordinate(2),...
+                                          'ko', 'Markerfacecolor', 'r');
+            else
+                obj.graphicsHandle = plot(obj.coordinate(1),obj.coordinate(2),...
+                                          'ko', 'Markerfacecolor', 'g');
+            end
         end
         
-        % This is all we'll use for now with the random business, once we
-        % have pathing this can get rolled in to continue its current task
-        function setDirection(obj, direction, map)
-            
-            % Check to make sure we aren't adding a waypoint at a stupid
-            % time
-            if (obj.onLink == 1)
-                ME = MException("Vehicle:cantAddWaypoint",...
-             "The Vehicle is on a link and can't accept a new destination");
-                throw(ME)
-            end
-            
-            curr_node = map(obj.coordinate(1), obj.coordinate(2));
-            
-            % This finds the node you want to get to and complains if you
-            % tell it to go to a node that doesn't exist
-            switch direction
-                case 'n'
-                    if (obj.coordinate(1)+1 > size(map, 1))
-                         ME = MException("Vehicle:cantAddWaypoint",...
-                                        "The destination is out of bounds: %s", 'n');
-                         throw(ME)
-                    end
-                    next_node = map(obj.coordinate(1)+1, obj.coordinate(2));
-                case 's'
-                    if (obj.coordinate(1)-1 < 1)
-                         ME = MException("Vehicle:cantAddWaypoint",...
-                                        "The destination is out of bounds: %s", 's');
-                         throw(ME)
-                    end
-                    next_node = map(obj.coordinate(1)-1, obj.coordinate(2));
-                case 'w'
-                     if (obj.coordinate(2)+1 < 1)
-                         ME = MException("Vehicle:cantAddWaypoint",...
-                                        "The destination is out of bounds: %s", 'w');
-                         throw(ME)
-                    end
-                    next_node = map(obj.coordinate(1), obj.coordinate(2)+1);
-                case 'e'
-                    if (obj.coordinate(2)-1 > size(map, 2))
-                         ME = MException("Vehicle:cantAddWaypoint",...
-                                        "The destination is out of bounds: %s", 'e');
-                         throw(ME)
-                    end
-                    next_node = map(obj.coordinate(1), obj.coordinate(2)-1);
-            end
-            
-            % Find our link and get set up for plotting accounting for the
-            % travel time
-            % TODO add extra time for moving through nodes
-            link = intersect([curr_node.links{:}], [next_node.links{:}]);
-            obj.xPath = linspace(curr_node.coordinate(1),...
-                                 next_node.coordinate(1), link.travel_time);
-            obj.yPath = linspace(curr_node.coordinate(2),...
-                                 next_node.coordinate(2), link.travel_time);
-            obj.stepForward()
-        end
-        
-        function stepForward(obj, mapGraph, map)
+        function stepForward(obj, mapGraph, map, buses)
             if ~isempty(obj.xPath)
                 set(obj.graphicsHandle,'XData',obj.xPath(1),'YData',obj.yPath(1));
                 obj.coordinate(1) = obj.xPath(1);
@@ -122,6 +74,27 @@ classdef Person < handle
                 
                 if length(path) == 1
                     obj.arrived = 1;
+                    if(obj.onBus == 0)
+                        if(map(obj.coordinate(1),obj.coordinate(2)).busHere == 1)
+                            obj.onBus = 1;
+                            obj.walking = 0;
+                            num_buses = length(buses);
+                            for idx = num_buses:-1:1
+                                if(buses(idx).coordinate(1) == obj.coordinate(1) && buses(idx).coordinate(2) == obj.coordinate(2))
+                                    buses(idx).numberOfPeopleOn = buses(idx).numberOfPeopleOn + 1;
+                                    buses(idx).arrayOfPeople(buses(idx).numberOfPeopleOn) = obj.personID;
+                                    break;
+                                end
+
+                            end
+                            if(obj.onBus == 1)
+                                obj.coordinate(1) = -1;
+                                obj.coordinate(2) = -1;
+                                set(obj.graphicsHandle,'XData',obj.coordinate(1),'YData',obj.coordinate(2));
+                                disp("hi");
+                            end
+                        end
+                    end
                     return
                 end
                 next_node = map([map.id] == path(2));

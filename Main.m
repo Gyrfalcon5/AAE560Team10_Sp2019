@@ -1,6 +1,7 @@
 % Main Script
 % This script uses the other m files to run the simulation
 
+
 %% Prepare Workspace
 
 clc, clear, close all;
@@ -23,6 +24,8 @@ for idx = 1:x_dim
         map(idx, jdx) = Node;
         map(idx, jdx).coordinate = [idx jdx];
         map(idx, jdx).id = count;
+        wait = randi([10 30]);
+        map(idx, jdx).wait_fun = @(x) wait;
         map(idx, jdx).busHere = 0;
         plotNode(map(idx, jdx))
         count = count + 1;
@@ -74,131 +77,131 @@ for idx = numel(links):-1:1
     nodes = link.nodes;
     s(idx) = nodes(1).id;
     t(idx) = nodes(2).id;
-    weights(idx) = link.travel_time;
+    car_weights(idx) = link.driving_weight;
+    walk_weights(idx) = link.walking_weight;
 end
 
-mapGraph = graph(s, t, weights);
+carGraph = graph(s, t, car_weights);
+walkGraph = graph(s, t, walk_weights);
 
-% Making cars
-num_cars = 10;
-for idx = num_cars:-1:1
-    cars(idx) = Vehicle;
-    cars(idx).coordinate = [randi([1,x_dim]) randi([1,y_dim])];
-    cars(idx).onNode = 1;
-    cars(idx).onLink = 0;
-    cars(idx).initializePlot();
-    cars(idx).destination = randi([1, numel(map)]);
-end
-
-num_buses = 1;
+load("./busRoutes.mat")
+num_buses = 2*length(busRoutes);
+bus_fare = 1; % Dollars
+gas_price = 2.80; % Dollars/gallon
 for idx = num_buses:-1:1
     buses(idx) = Bus;
-    buses(idx).coordinate = [randi([1,x_dim]) randi([1,y_dim])];
     buses(idx).onNode = 1;
     buses(idx).onLink = 0;
-    buses(idx).initializePlot();
     buses(idx).destinationCurrent = 1;
     buses(idx).numberOfPeopleOn = 0;
-    %buses(idx).destinationArray = [randi([1, numel(map)]),randi([1, numel(map)]),randi([1, numel(map)]),randi([1, numel(map)])];
-    buses(idx).destinationArray = [91,1,10,100,55];
+    % Have to get a bus going each way
+    if mod(idx, 2) == 0
+        buses(idx).destinationArray = busRoutes{ceil(idx/2)};
+    else
+        buses(idx).destinationArray = flip(busRoutes{ceil(idx/2)});
+    end
+    buses(idx).coordinate = [map([map.id] == buses(idx).destinationArray(1)).coordinate];
     buses(idx).destination = buses(idx).destinationArray(buses(idx).destinationCurrent);
     buses(idx).waitTime = 0;
+    buses(idx).routeID = ceil(idx/2);
+    idle = rand()/4+0.25;
+    driving = 1/(normrnd(4, 1)); % Std deviation is made up
+    buses(idx).efficiency = @(speed) (idle + speed .* driving) ./ 3600;
     buses(idx).arrayOfPeople = [];
+    buses(idx).initializePlot();
+    buses(idx).busID = idx;
+    buses(idx).numberOfPeopleOn = 0;
 end
 
-num_people = 3;
+% Residential is the bottom left quadrant
+res_x = 5;
+res_y = 5;
+map_coords = [map.coordinate];
+map_x = map_coords(1:2:end);
+map_y = map_coords(2:2:end);
+destination_nodes = map(map_x > res_x | map_y > res_y); 
+
+
+num_people = 2500;
 for idx = num_people:-1:1
     people(idx) = Person;
-    people(idx).coordinate = [randi([1,x_dim]) randi([1,y_dim])];
+    people(idx).coordinate = [randi([1,res_x]) randi([1,res_y])];
+    people(idx).home = map(people(idx).coordinate(1), people(idx).coordinate(2)).id;
     people(idx).onNode = 1;
     people(idx).onLink = 0;
-    %people(idx).initializePlot();
-    %people(idx).destination = randi([1, numel(map)]);
-    people(idx).destination = (100);
+    people(idx).initializePlot();
+    people(idx).destination = destination_nodes(randi([1, numel(destination_nodes)])).id;
     people(idx).onBus = 0;
     people(idx).onCar = 0;
-    people(idx).walking = 1;
+    people(idx).walking = 0;
+    people(idx).vehicle = Vehicle;
+    people(idx).vehicle.coordinate = [-1, -1];
+    people(idx).vehicle.onNode = 1;
+    people(idx).vehicle.onLink = 0;
+    people(idx).vehicle.initializePlot();
+    idle = rand()/4+0.25;
+    driving = 1/(normrnd(24, 5)); % Std deviation is made up
+    people(idx).vehicle.efficiency = @(speed) (idle + speed .* driving) ./ 3600;
+    people(idx).walking = 0;
     people(idx).personID = idx;
     people(idx).numOfBusStops = 2;
     people(idx).numOfBusStopsIDX = people(idx).numOfBusStops;
-    
+    people(idx).timeValue = 0.008273056; % Median for Indy, in dollars/sec
+    people(idx).decideMode(walkGraph, carGraph, map, gas_price, bus_fare);
+    people(idx).busImOn = 0;
+    idx
 end
-people(1).initializePlot();
-
-people(2).numOfBusStops = 4;
-people(2).numOfBusStopsIDX = people(2).numOfBusStops;
-people(2).initializePlot();
-
-people(3).numOfBusStops = 3;
-people(3).numOfBusStopsIDX = people(3).numOfBusStops;
-people(3).initializePlot();
 
 recording = 0;
+visualization = 1;
 % Stuff for recording
 if recording == 1 
     v = VideoWriter("../animation2.avi", "Motion JPEG AVI");
     open(v);
 end
 
+commuting_home = 0; % Tells us whether we've done evening rush hour
+
 while (1)
-    
-    
-    nodePeople = people([people.onNode] == 1 & [people.onBus] ~= 1);
-    linkPeople = people([people.onLink] == 1 & [people.onBus] ~= 1);
-    nodeBuses = buses([buses.onNode] == 1);
-    linkBuses = buses([buses.onLink] == 1);
-    nodeCars = cars([cars.onNode] == 1);
-    linkCars = cars([cars.onLink] == 1);
-    
-    if ~isempty(linkBuses)
-        arrayfun(@(x) x.stepForward(mapGraph, map, people), linkBuses);
-    end
-    
-    if ~isempty(linkPeople)
-        arrayfun(@(x) x.stepForward(mapGraph, map, buses), linkPeople);
-    end
-        
-    if ~isempty(linkCars)
-        arrayfun(@(x) x.stepForward(mapGraph, map), linkCars);
-    end
-    
-    
-    nodePeopleCoords = [nodePeople.coordinate];
-    nodePeopleX = nodePeopleCoords(1:2:end);
-    nodePeopleY = nodePeopleCoords(2:2:end);
-    
-    nodeBusesCoords = [nodeBuses.coordinate];
-    nodeBusesX = nodeBusesCoords(1:2:end);
-    nodeBusesY = nodeBusesCoords(2:2:end);
-    
-    nodeCarsCoords = [nodeCars.coordinate];
-    nodeCarsX = nodeCarsCoords(1:2:end);
-    nodeCarsY = nodeCarsCoords(2:2:end);
-    
-    if ~isempty(nodeBuses)
-        arrayfun(@(x) x.stepForward(mapGraph, map, people), nodeBuses);
-    end
-    
-    if ~isempty(nodePeople)
-        arrayfun(@(x) x.stepForward(mapGraph, map, buses), nodePeople);
-    end
-    
-    if ~isempty(nodeCars)
-        arrayfun(@(x) x.stepForward(mapGraph, map), nodeCars);
+
+    for idx = 1:num_people
+        people(idx).stepForward(carGraph, map, buses);
     end
 
-    mapGraph = graph(s, t, [links.travel_time]);
+    for idx = 1:num_buses
+        buses(idx).stepForward(carGraph, map, people);
+    end
+
+    drive_times = [];
+    walk_times = [];
+    for idx = length(links):-1:1
+        drive_times(idx) = links(idx).driving_weight;
+        walk_times(idx) = links(idx).walking_weight;
+    end
     
-%     if sum([cars.arrived]) == length(cars)
-%         break;
-%     end
+    carGraph = graph(s, t, drive_times);
+    walkGraph = graph(s, t, walk_times);
+    
+    if sum([people.arrived]) == length(people)
+        if commuting_home
+            break;
+        else
+            commuting_home = 1;
+            for idx = 1:length(people)
+                people(idx).destination = people(idx).home;
+                people(idx).arrived = 0;
+                people(idx).vehicle.arrived = 0;
+                people(idx).decideMode(walkGraph, carGraph, map, gas_price, bus_fare);
+            end
+        end
+    end
     
     % Stuff for recording
     if recording == 1
         frame = getframe(fig_handle);
         writeVideo(v, frame);
-    else
-        pause(0.001)
+    elseif visualization == 1
+        drawnow limitrate
     end
 
 end
@@ -207,3 +210,29 @@ end
 if recording == 1
     close(v)
 end
+cars = [people.vehicle];
+carSpeeds = [cars.speeds];
+busSpeeds = [buses.speeds];
+speeds = [carSpeeds busSpeeds];
+
+figure;
+histogram(speeds)
+title("Histogram of Vehicle Speeds")
+xlabel("Speed (blocks/sec)")
+ylabel("Number of vehicle seconds")
+
+for idx = length(cars):-1:1
+    gas(idx) = sum(cars(idx).efficiency(cars(idx).speeds));
+end
+for idx = length(buses)+length(cars):-1:length(cars)+1
+    gas(idx) = sum(buses(idx-length(cars)).efficiency(buses(idx-length(cars)).speeds));
+end
+    
+gasEmissions = 8.887; % kg CO2 / gal
+emissions = gas.* gasEmissions;
+figure;
+histogram(emissions)
+title("Histogram of Vehicle Emissions")
+xlabel("kg of CO_2")
+ylabel("Number of vehicles")
+sum(emissions)

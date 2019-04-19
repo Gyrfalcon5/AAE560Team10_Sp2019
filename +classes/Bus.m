@@ -52,10 +52,8 @@ classdef Bus < handle
             greyHolder = 192/255;
             colorGrey = [greyHolder,greyHolder,greyHolder];
             obj.graphicsHandle = plot(obj.coordinate(1),obj.coordinate(2),...
-                                      'ko', 'Markerfacecolor',colorGrey);
-            
-%             obj.graphicsHandle = plot(obj.coordinate(1),obj.coordinate(2),...
-%                                       'ko', 'Markerfacecolor', 'k');
+                                      'ko', 'Markerfacecolor',colorGrey,...
+                                      "Markersize", 10);
             
         end
         
@@ -80,18 +78,14 @@ classdef Bus < handle
                     next_node = map([map.id] == path(2));
                 end
                 
-%                 if next_node.id == current_node.id
-%                     obj.arrived = 1;
-%                 end
-                
                 if(obj.arrived == 1)
-                    
+                    %{
                     if(obj.waitTime <= 25)
                        obj.waitTime = obj.waitTime + 1;
                        map(obj.coordinate(1),obj.coordinate(2)).busHere = 1;
                        return
                     end
-                    
+                    %}
                     numOfdestination = size(obj.destinationArray);
                     if(numOfdestination(2) == obj.destinationCurrent)
                         obj.destinationCurrent = 1;
@@ -100,8 +94,10 @@ classdef Bus < handle
                         obj.destinationCurrent = obj.destinationCurrent + 1;                        
                     end
                     obj.destination = obj.destinationArray(obj.destinationCurrent);
-                    map(obj.coordinate(1),obj.coordinate(2)).busHere = 0;
+                    
+                    %map(obj.coordinate(1),obj.coordinate(2)).busHere = 0;
                     obj.arrived = 0;
+                    %{
                     for idx = obj.numberOfPeopleOn:-1:1
                         currentPerson = obj.arrayOfPeople(idx);
                         for jdx = length(people):-1:1
@@ -128,10 +124,11 @@ classdef Bus < handle
                             end
                         end
                     end
-                    obj.waitTime = 0;
-                    return
+                    %}
+                    %obj.waitTime = 0;
+                    %return
                 end
-                
+                next_node = map([map.id] == obj.destination);
                 link = intersect([current_node.links{:}], [next_node.links{:}]);
                 obj.xPath = linspace(current_node.coordinate(1),...
                                      next_node.coordinate(1), link.travel_time);
@@ -141,7 +138,7 @@ classdef Bus < handle
                 obj.speeds = [obj.speeds norm([obj.xPath(2) - obj.xPath(1), obj.yPath(2) - obj.yPath(1)])*ones(1,link.travel_time)];                
                 obj.yPath = [ones(1,current_node.wait_time)*obj.yPath(1) obj.yPath];
                 obj.xPath = [ones(1,current_node.wait_time)*obj.xPath(1) obj.xPath];
-                obj.stepForward();
+                %obj.stepForward(mapGraph, map, people);
                 
             else
                 obj.onLink = 1;

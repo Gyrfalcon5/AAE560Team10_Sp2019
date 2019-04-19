@@ -12,15 +12,16 @@ for idx = 1:1000
     timeValue = (0.38/2)*timePref; %value of individual's time, in dollars per minute, based on average for Indy
     gasPrice = 2.8; %dollars per gallon
     BlocksPerMile = 17;
+    busFare = 1;
 
     n = 10;
     A = delsq(numgrid('S', (n+2)));
     B = full(A);
-    C = abs(B);P
+    C = abs(B);
     G = graph(C,'omitselfloops');
-    h = plot(G);
+    %h = plot(G);
     P = shortestpath(G,startNode, endNode); %this is the straight line path from start node to end node
-    highlight(h,P,'NodeColor','g','EdgeColor','g')
+    %highlight(h,P,'NodeColor','g','EdgeColor','g')
 
     costCar = (((length(P)-1)/BlocksPerMile)/efficiency)*gasPrice + (length(P)-1) * timeValue / carSpeed + 1;
     %carbonEmiss = efficiency * length(P)
@@ -42,6 +43,7 @@ for idx = 1:1000
     costs(vehiclePref) = costs(vehiclePref)*0.75; %makes the preferred vehicle less expensive by an arbitrary 0.75
     [transportCost, vehicleChoice] = mink(costs, 1); %outputs best vehicle choice and cost of that choice
     choiceRecord(idx) = vehicleChoice;
+    idx
 end
 figure;
 histogram(choiceRecord)

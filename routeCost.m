@@ -53,5 +53,5 @@ busDriveDist = busDist([1 3 21 10 95 1 3 21 10 95], onboardNode, egressNode);
 timeBus = (busWalkDist / walkSpeed) + (busDriveDist / busSpeed); %need to add real bus times eventually
 [bestBusTime, bestBus] = mink(timeBus,1);
 
-costs = [costCar costWalk costBus];
-times = [timeCar timeWalk bestBusTime];
+costs = [costCar costWalk costBus]
+times = [timeCar timeWalk bestBusTime]

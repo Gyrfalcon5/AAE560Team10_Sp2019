@@ -77,19 +77,21 @@ for idx = numel(links):-1:1
     nodes = link.nodes;
     s(idx) = nodes(1).id;
     t(idx) = nodes(2).id;
-    weights(idx) = link.travel_time;
+    car_weights(idx) = link.driving_weight;
+    walk_weights(idx) = link.walking_weight;
 end
 
-mapGraph = graph(s, t, weights);
+carGraph = graph(s, t, car_weights);
+walkGraph = graph(s, t, walk_weights);
 
 load("./busRoutes.mat")
 num_buses = 2*length(busRoutes);
+bus_fare = 1; % Dollars
+gas_price = 2.80; % Dollars/gallon
 for idx = num_buses:-1:1
     buses(idx) = Bus;
-    buses(idx).coordinate = [randi([1,x_dim]) randi([1,y_dim])];
     buses(idx).onNode = 1;
     buses(idx).onLink = 0;
-    buses(idx).initializePlot();
     buses(idx).destinationCurrent = 1;
     buses(idx).numberOfPeopleOn = 0;
     % Have to get a bus going each way
@@ -98,8 +100,7 @@ for idx = num_buses:-1:1
     else
         buses(idx).destinationArray = flip(busRoutes{ceil(idx/2)});
     end
-    buses(idx).coordinate = [map(buses(idx).destinationArray(1)).coordinate];
-    buses(idx).initializePlot();
+    buses(idx).coordinate = [map([map.id] == buses(idx).destinationArray(1)).coordinate];
     buses(idx).destination = buses(idx).destinationArray(buses(idx).destinationCurrent);
     buses(idx).waitTime = 0;
     buses(idx).routeID = ceil(idx/2);
@@ -107,6 +108,7 @@ for idx = num_buses:-1:1
     driving = 1/(normrnd(4, 1)); % Std deviation is made up
     buses(idx).efficiency = @(speed) (idle + speed .* driving) ./ 3600;
     buses(idx).arrayOfPeople = [];
+    buses(idx).initializePlot();
 end
 
 % Residential is the bottom left quadrant
@@ -117,7 +119,8 @@ map_x = map_coords(1:2:end);
 map_y = map_coords(2:2:end);
 destination_nodes = map(map_x > res_x | map_y > res_y); 
 
-num_people = 750;
+
+num_people = 75;
 for idx = num_people:-1:1
     people(idx) = Person;
     people(idx).coordinate = [randi([1,res_x]) randi([1,res_y])];
@@ -141,12 +144,12 @@ for idx = num_people:-1:1
     people(idx).personID = idx;
     people(idx).numOfBusStops = 2;
     people(idx).numOfBusStopsIDX = people(idx).numOfBusStops;
-    
+    people(idx).timeValue = 0.008273056; % Median for Indy, in dollars/sec
+    people(idx).decideMode(walkGraph, carGraph, map, gas_price, bus_fare);
+    idx
 end
 
-arrayfun(@(x) x.decideMode(mapGraph, map), people);
-
-recording = 0;
+recording = 1;
 visualization = 0;
 % Stuff for recording
 if recording == 1 
@@ -159,19 +162,22 @@ commuting_home = 0; % Tells us whether we've done evening rush hour
 while (1)
 
     for idx = 1:num_people
-        people(idx).stepForward(mapGraph, map, buses);
+        people(idx).stepForward(carGraph, map, buses);
     end
 
     for idx = 1:num_buses
-        buses(idx).stepForward(mapGraph, map, people);
+        buses(idx).stepForward(carGraph, map, people);
     end
 
-    travel_times = [];
+    drive_times = [];
+    walk_times = [];
     for idx = length(links):-1:1
-        travel_times(idx) = links(idx).link_weight;
+        drive_times(idx) = links(idx).driving_weight;
+        walk_times(idx) = links(idx).walking_weight;
     end
     
-    mapGraph = graph(s, t, travel_times);
+    carGraph = graph(s, t, drive_times);
+    walkGraph = graph(s, t, walk_times);
     
     if sum([people.arrived]) == length(people)
         if commuting_home
@@ -182,7 +188,7 @@ while (1)
                 people(idx).destination = people(idx).home;
                 people(idx).arrived = 0;
                 people(idx).vehicle.arrived = 0;
-                people(idx).decideMode(mapGraph, map);
+                people(idx).decideMode(walkGraph, carGraph, map, gas_price, bus_fare);
             end
         end
     end

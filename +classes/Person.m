@@ -32,6 +32,7 @@ classdef Person < handle
                 % ride the bus.
         currentBus % The bus we're riding so we don't have to keep track
         timeValue
+        busImOn
     end
     
     methods
@@ -86,6 +87,11 @@ classdef Person < handle
                 % okay, might be able to reduce it
                 if obj.rodeBus
                     obj.walking = 1; % to reuse walking code after the bus
+                    for idx = length(buses):-1:1
+                        if(buses(idx).busID == obj.busImOn)
+                            buses(idx).numberOfPeopleOn = buses(idx).numberOfPeopleOn - 1;
+                        end                       
+                    end
                 else
                     % Check if we are at our stop
                     if obj.onNode
@@ -105,9 +111,16 @@ classdef Person < handle
                             % we need
                             if ~isempty(busesHere)
                                 obj.currentBus = busesHere(1);
-                                obj.onBus = 1;
-                                obj.onNode = 0;
-                                set(obj.graphicsHandle,'XData',-1,'YData',-1);
+                                if(obj.currentBus.numberOfPeopleOn <= 30)
+                                
+                                    obj.onBus = 1;
+                                    obj.onNode = 0;
+                                    obj.currentBus.numberOfPeopleOn =  obj.currentBus.numberOfPeopleOn + 1;
+                                    obj.busImOn = obj.currentBus.busID;
+                                    set(obj.graphicsHandle,'XData',-1,'YData',-1);
+                                else
+                                    fprintf("GET DAT DOG N SUDS BRAH!\n");
+                                end
                             end
                                 
                         else

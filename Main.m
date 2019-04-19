@@ -109,6 +109,8 @@ for idx = num_buses:-1:1
     buses(idx).efficiency = @(speed) (idle + speed .* driving) ./ 3600;
     buses(idx).arrayOfPeople = [];
     buses(idx).initializePlot();
+    buses(idx).busID = idx;
+    buses(idx).numberOfPeopleOn = 0;
 end
 
 % Residential is the bottom left quadrant
@@ -146,6 +148,7 @@ for idx = num_people:-1:1
     people(idx).numOfBusStopsIDX = people(idx).numOfBusStops;
     people(idx).timeValue = 0.008273056; % Median for Indy, in dollars/sec
     people(idx).decideMode(walkGraph, carGraph, map, gas_price, bus_fare);
+    people(idx).busImOn = 0;
 end
 
 recording = 0;

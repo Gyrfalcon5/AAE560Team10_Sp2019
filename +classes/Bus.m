@@ -19,6 +19,7 @@ classdef Bus < handle
         efficiency % function that determines the emissions based on speed
         routeID % Tells you what route the bus is on
         arrayOfPeople
+        busID
     end
     
     methods

@@ -21,7 +21,7 @@ classdef Node < handle
         end
 
         function time = get.wait_time(obj)
-            time = 1;
+            time = obj.wait_fun(obj.users);
         end
 
         function obj = Node(coordinate, links, wait_fun, users)

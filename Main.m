@@ -120,7 +120,7 @@ map_y = map_coords(2:2:end);
 destination_nodes = map(map_x > res_x | map_y > res_y); 
 
 
-num_people = 75;
+num_people = 750;
 for idx = num_people:-1:1
     people(idx) = Person;
     people(idx).coordinate = [randi([1,res_x]) randi([1,res_y])];
@@ -146,11 +146,10 @@ for idx = num_people:-1:1
     people(idx).numOfBusStopsIDX = people(idx).numOfBusStops;
     people(idx).timeValue = 0.008273056; % Median for Indy, in dollars/sec
     people(idx).decideMode(walkGraph, carGraph, map, gas_price, bus_fare);
-    idx
 end
 
-recording = 1;
-visualization = 0;
+recording = 0;
+visualization = 1;
 % Stuff for recording
 if recording == 1 
     v = VideoWriter("../animation2.avi", "Motion JPEG AVI");

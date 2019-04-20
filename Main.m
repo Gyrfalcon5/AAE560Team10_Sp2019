@@ -6,7 +6,6 @@
 
 clc, clear, close all;
 import classes.*
-rng(560)
 prompt = "Test Name";
 dlgtitle = "Input";
 definput = "Test";
@@ -14,6 +13,7 @@ dims = [1 35];
 test_name = inputdlg(prompt, dlgtitle, dims, definput);
 test_name = test_name{1}(~isspace(test_name{1}));
 mkdir("../testData", test_name);
+rng(560)
 
 %% Initialize Simulation
 
@@ -129,7 +129,7 @@ map_y = map_coords(2:2:end);
 destination_nodes = map(map_x > res_x | map_y > res_y); 
 
 
-num_people = 750;
+num_people = 800;
 for idx = num_people:-1:1
     people(idx) = Person;
     people(idx).coordinate = [randi([1,res_x]) randi([1,res_y])];
@@ -251,7 +251,7 @@ title("Histogram of Vehicle Emissions")
 fig_titles{end+1} = 'Histogram of Vehicle Emissions';
 xlabel("kg of CO_2")
 ylabel("Number of vehicles")
-total_emissions = sum(emissions);
+total_emissions = sum(emissions)
 
 costs = [people.transitCosts];
 figs(end+1) = figure;
@@ -260,7 +260,7 @@ title("Histogram of Transit Trip Costs")
 fig_titles{end+1} = 'Histogram of Transit Trip Costs';
 xlabel("Cost (Dollars)");
 ylabel("Number of trips");
-total_cost = sum(costs);
+total_cost = sum(costs)
 
 for idx = 1:length(figs)
     fig_title = fig_titles{idx}(~isspace(fig_titles{idx}));
@@ -268,5 +268,5 @@ for idx = 1:length(figs)
 end
 
 fileID = fopen(sprintf("../testData/%s/%s.txt", test_name, test_name), "w");
-fprintf(fileID, "Total Emissions: %f kg CO2\nTotal Cost: $%0.2f\n", total_emissions, total_cost);
+fprintf(fileID, "Total Emissions: %f kg CO2\nTotal Cost: $%0.2f\nNumber of People: %d\n", total_emissions, total_cost, num_people);
 fclose(fileID);

@@ -108,12 +108,13 @@ classdef Person < handle
                             % ride
                             busesHere = buses(busX == obj.coordinate(1) ...
                                             & busY == obj.coordinate(2) ...
-                                            & [buses.routeID] == obj.busLine);
+                                            & [buses.routeID] == obj.busLine)
                             % TODO finish this, I think its the last thing
                             % we need
                             if ~isempty(busesHere)
+                                fprintf("hello\n")
                                 obj.currentBus = busesHere(1);
-                                if(obj.currentBus.numberOfPeopleOn <= 30)
+                                if(obj.currentBus.numberOfPeopleOn <= 50)
                                 
                                     obj.onBus = 1;
                                     obj.onNode = 0;
@@ -134,6 +135,7 @@ classdef Person < handle
                     elseif obj.onLink
                         % More walking code to get to the boarding stop
                         obj.walking = 1;
+                        destination = obj.boardingStop;
                         
                     elseif obj.onBus
                         % Code to check if the bus has arrived, and if so,
@@ -143,6 +145,8 @@ classdef Person < handle
                                 % If we are at the stop where we get off
                                 obj.coordinate = obj.currentBus.coordinate;
                                 set(obj.graphicsHandle,'XData',obj.coordinate(1),'YData',obj.coordinate(2));
+                                obj.xPath = [];
+                                obj.yPath = [];
                                 obj.rodeBus = 1;
                                 obj.onBus = 0;
                             end
@@ -175,18 +179,28 @@ classdef Person < handle
                 path = shortestpath(mapGraph, current_node.id, destination, "Method", "positive");
                 % This still has problems, need to fix it somehow
                 
-                if length(path) == 1
-                    obj.arrived = 1;
-                    return
-                end
-                
-                
-                next_node = map([map.id] == path(2));
-                if next_node.id == current_node.id
+                if length(path) == 1 & ~obj.busLine
                     obj.arrived = 1;
                     obj.walking = 0;
                     return
+                elseif length(path) == 1 & obj.busLine
+                    obj.walking = 0;
+                    return % We just want to wait for the bus
                 end
+                next_node = map([map.id] == path(2));
+                if next_node.id == current_node.id & ~obj.busLine 
+                    obj.arrived = 1;
+                    obj.walking = 0;
+                    return
+                elseif next_node.id == current_node.id & obj.busLine & obj.rodeBus
+                    obj.walking = 0;
+                    obj.arrived = 1;
+                    return % We just want to wait for the bus
+                elseif next_node.id == current_node.id & obj.busLine
+                    obj.walking = 0;
+                    return;
+                end
+                    
                 
                 link = intersect([current_node.links{:}], [next_node.links{:}]);
                 linkTime = link.travel_time * 6;
@@ -209,7 +223,7 @@ classdef Person < handle
             
         end
         
-        function decideMode(obj, walkGraph, carGraph, map, gasPrice, busFare)
+        function decideMode(obj, walkGraph, carGraph, map, gasPrice, busFare, buses)
             % Should run some calculations on how to get to destination,
             % and should get ready for that to happen. Right now it decides
             % randomly
@@ -229,26 +243,33 @@ classdef Person < handle
                 costWalk = inf;
             end
             
-            [startMins, startPaths] = startWalk(walkGraph, currentNode);
-            [endMins, endPaths] = endWalk(walkGraph, obj.destination);
-            
-            [busWalkDist, bestLoop] = mink(startMins+endMins,1);
-            boardingStop = startPaths(bestLoop);
-            egressStop = endPaths(bestLoop);
-            [startPath, walk1] = shortestpath(walkGraph, currentNode, boardingStop, "Method", "positive");
-            [endPath, walk2] = shortestpath(walkGraph, egressStop, obj.destination, "Method", "positive");
-            busWalkDist = length(startPath) + length(endPath) - 2; % Adjusts to blocks, not nodes
-            % This is an estimate, we will probably want to make this
-            % better if we have time
-            [~, busTime] = shortestpath(carGraph, boardingStop, egressStop, "Method", "positive");
-            % Sets our bus cost to infinite if you have to walk too far
-            if busWalkDist < 6
-                costBus = (walk1+walk2+busTime)*obj.timeValue + busFare;
-            else
-                costBus = inf;
+            [startMins, onboardNode] = startWalk(walkGraph, currentNode); %gets the paths and path lengths to all bus loops from start node
+            startMins = [startMins startMins];
+            onboardNode = [onboardNode onboardNode];
+
+            [endMins, egressNode] = endWalk(walkGraph, obj.destination); %gets the paths and path lengths from all bus loops to end node
+            endMins = [endMins endMins];
+            egressNode = [egressNode egressNode];
+
+            busWalkDist = startMins + endMins;
+            busCoord = {buses.coordinate};
+            for idx = 1:length(buses) %change for num of buses active
+                busCoordInd = busCoord(idx);
+                busCoordInd = cell2mat(busCoordInd);
+                busCoordInd = round(busCoordInd);
+                nodeInd = map(busCoordInd(1),busCoordInd(2));
+                busList(idx) = nodeInd.id;
             end
+
+            busDriveDist = busDist(busList, onboardNode, egressNode);
+            busTime = (busWalkDist) + (busDriveDist);
+            [bestBusTime, bestLoop] = mink(busTime,1);
+            egressStop = egressNode(bestLoop);
+            boardingStop = onboardNode(bestLoop);
+            costBus = bestBusTime * obj.timeValue + busFare;
             
-            costs = [costBus, costCar, costWalk];            
+            
+            costs = [costBus];            
             if min(costs) == costCar
                 % Car Case
                 obj.vehicle.coordinate = obj.coordinate;
@@ -263,6 +284,7 @@ classdef Person < handle
                     'YData', obj.vehicle.coordinate(2));
                 obj.vehicle.stepForward(carGraph, map);
                 obj.transitCosts(end+1) = costCar;
+                obj.arrived = 0;
             elseif min(costs) == costBus
                 % Bus Case
                 obj.busLine = bestLoop;
@@ -274,6 +296,7 @@ classdef Person < handle
                 obj.onLink = 0;
                 obj.onNode = 1;
                 obj.transitCosts(end+1) = costBus;
+                obj.arrived = 0;
             elseif min(costs) == costWalk
                 % Walking Case
                 obj.onLink = 0;
@@ -281,6 +304,7 @@ classdef Person < handle
                 obj.walking = 1;
                 obj.busLine = 0;
                 obj.transitCosts(end+1) = costWalk;
+                obj.arrived = 0;
             else
                 fprintf("Something is broken and you don't have a cost match!!\n")
             end

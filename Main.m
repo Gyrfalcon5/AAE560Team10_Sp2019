@@ -93,6 +93,12 @@ walkGraph = graph(s, t, walk_weights);
 
 load("./busRoutes.mat")
 num_buses = 2*length(busRoutes);
+% Make it so we have a route each way
+num_routes = length(busRoutes);
+for idx = 1:num_routes
+    busRoutes{end+1} = fliplr(busRoutes{idx});
+end
+    
 bus_fare = 1; % Dollars
 gas_price = 2.80; % Dollars/gallon
 for idx = num_buses:-1:1
@@ -101,16 +107,11 @@ for idx = num_buses:-1:1
     buses(idx).onLink = 0;
     buses(idx).destinationCurrent = 1;
     buses(idx).numberOfPeopleOn = 0;
-    % Have to get a bus going each way
-    if mod(idx, 2) == 0
-        buses(idx).destinationArray = busRoutes{ceil(idx/2)};
-    else
-        buses(idx).destinationArray = flip(busRoutes{ceil(idx/2)});
-    end
+    buses(idx).destinationArray = busRoutes{idx};
     buses(idx).coordinate = [map([map.id] == buses(idx).destinationArray(1)).coordinate];
     buses(idx).destination = buses(idx).destinationArray(buses(idx).destinationCurrent);
     buses(idx).waitTime = 0;
-    buses(idx).routeID = ceil(idx/2);
+    buses(idx).routeID = idx;
     idle = rand()/4+0.25;
     driving = 1/(normrnd(4, 1)); % Std deviation is made up
     buses(idx).efficiency = @(speed) (idle + speed .* driving) ./ 3600;
@@ -129,7 +130,7 @@ map_y = map_coords(2:2:end);
 destination_nodes = map(map_x > res_x | map_y > res_y); 
 
 
-num_people = 800;
+num_people = 2;
 for idx = num_people:-1:1
     people(idx) = Person;
     people(idx).coordinate = [randi([1,res_x]) randi([1,res_y])];
@@ -154,12 +155,12 @@ for idx = num_people:-1:1
     people(idx).numOfBusStops = 2;
     people(idx).numOfBusStopsIDX = people(idx).numOfBusStops;
     people(idx).timeValue = 0.008273056; % Median for Indy, in dollars/sec
-    people(idx).decideMode(walkGraph, carGraph, map, gas_price, bus_fare);
+    people(idx).decideMode(walkGraph, carGraph, map, gas_price, bus_fare, buses);
     people(idx).busImOn = 0;
 end
 
-recording = 1;
-visualization = 0;
+recording = 0;
+visualization = 1;
 % Stuff for recording
 if recording == 1
     video_title = sprintf("../testData/%s/%s.avi", test_name, test_name);
@@ -200,7 +201,7 @@ while (1)
                 people(idx).destination = people(idx).home;
                 people(idx).arrived = 0;
                 people(idx).vehicle.arrived = 0;
-                people(idx).decideMode(walkGraph, carGraph, map, gas_price, bus_fare);
+                people(idx).decideMode(walkGraph, carGraph, map, gas_price, bus_fare, buses);
             end
         end
     end

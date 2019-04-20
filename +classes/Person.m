@@ -33,6 +33,8 @@ classdef Person < handle
         currentBus % The bus we're riding so we don't have to keep track
         timeValue
         busImOn
+        transitCosts % This records how much cost was incurred for transit,
+                     % including the cost of the person's time
     end
     
     methods
@@ -170,7 +172,7 @@ classdef Person < handle
                 obj.onLink = 0;
                 obj.onNode = 1;
                 current_node = map(obj.coordinate(1), obj.coordinate(2));
-                path = shortestpath(mapGraph, current_node.id, destination);
+                path = shortestpath(mapGraph, current_node.id, destination, "Method", "positive");
                 % This still has problems, need to fix it somehow
                 
                 if length(path) == 1
@@ -214,14 +216,14 @@ classdef Person < handle
             
             blocksPerMile = 17;
             currentNode = map(obj.coordinate(1), obj.coordinate(2)).id;
-            [path, time] = shortestpath(carGraph, currentNode, obj.destination);
+            [path, time] = shortestpath(carGraph, currentNode, obj.destination, "Method", "positive");
             speed = (length(path)-1)*blocksPerMile / time;
             fuel = obj.vehicle.efficiency(speed)*time;
             
             costCar = fuel*gasPrice + time*obj.timeValue + 1; % The one is for having to own a car, I think
             
             if length(path) < 6 %sets walking cost to inf if the walking distance is more than 5 blocks
-                [~, time] = shortestpath(walkGraph, currentNode, obj.destination);
+                [~, time] = shortestpath(walkGraph, currentNode, obj.destination, "Method", "positive");
                 costWalk = time*obj.timeValue;
             else
                 costWalk = inf;
@@ -235,11 +237,11 @@ classdef Person < handle
             busWalkDist = busWalkDist-1; % Adjusts to blocks, not nodes
             boardingStop = startPaths(bestLoop);
             egressStop = endPaths(bestLoop);
-            [~, walk1] = shortestpath(walkGraph, currentNode, boardingStop);
-            [~, walk2] = shortestpath(walkGraph, egressStop, obj.destination);
+            [~, walk1] = shortestpath(walkGraph, currentNode, boardingStop, "Method", "positive");
+            [~, walk2] = shortestpath(walkGraph, egressStop, obj.destination, "Method", "positive");
             % This is an estimate, we will probably want to make this
             % better if we have time
-            [~, busTime] = shortestpath(carGraph, boardingStop, egressStop);
+            [~, busTime] = shortestpath(carGraph, boardingStop, egressStop, "Method", "positive");
             % Sets our bus cost to infinite if you have to walk too far
             if busWalkDist < 6
                 costBus = (walk1+walk2+busTime)*obj.timeValue + busFare;
@@ -261,6 +263,7 @@ classdef Person < handle
                     'XData', obj.vehicle.coordinate(1),...
                     'YData', obj.vehicle.coordinate(2));
                 obj.vehicle.stepForward(carGraph, map);
+                obj.transitCosts(end+1) = costCar;
             elseif min(costs) == costBus
                 % Bus Case
                 obj.busLine = bestLoop;
@@ -271,13 +274,14 @@ classdef Person < handle
                 obj.rodeBus = 0;
                 obj.onLink = 0;
                 obj.onNode = 1;
+                obj.transitCosts(end+1) = costBus;
             elseif min(costs) == costWalk
                 % Walking Case
                 obj.onLink = 0;
                 obj.onNode = 1;
                 obj.walking = 1;
                 obj.busLine = 0;
-               
+                obj.transitCosts(end+1) = costWalk;
             else
                 fprintf("Something is broken and you don't have a cost match!!\n")
             end

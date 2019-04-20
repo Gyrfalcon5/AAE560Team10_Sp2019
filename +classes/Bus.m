@@ -71,7 +71,7 @@ classdef Bus < handle
                 obj.onLink = 0;
                 obj.onNode = 1;
                 current_node = map(obj.coordinate(1), obj.coordinate(2));
-                path = shortestpath(mapGraph, current_node.id, obj.destination);
+                path = shortestpath(mapGraph, current_node.id, obj.destination, "Method", "positive");
                 % This still has problems, need to fix it somehow
                 if length(path) == 1
                     obj.arrived = 1;

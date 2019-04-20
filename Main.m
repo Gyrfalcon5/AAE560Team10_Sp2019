@@ -7,6 +7,13 @@
 clc, clear, close all;
 import classes.*
 rng(560)
+prompt = "Test Name";
+dlgtitle = "Input";
+definput = "Test";
+dims = [1 35];
+test_name = inputdlg(prompt, dlgtitle, dims, definput);
+test_name = test_name{1}(~isspace(test_name{1}));
+mkdir("../testData", test_name);
 
 %% Initialize Simulation
 
@@ -152,14 +159,17 @@ for idx = num_people:-1:1
 end
 
 recording = 0;
-visualization = 1;
+visualization = 0;
 % Stuff for recording
-if recording == 1 
-    v = VideoWriter("../animation2.avi", "Motion JPEG AVI");
+if recording == 1
+    video_title = sprintf("../testData/%s/%s.avi", test_name, test_name);
+    v = VideoWriter(video_title, "Motion JPEG 2000");
     open(v);
 end
 
 commuting_home = 0; % Tells us whether we've done evening rush hour
+
+%% Run Simulation
 
 while (1)
 
@@ -209,14 +219,20 @@ end
 if recording == 1
     close(v)
 end
+
+%% Process and output data
+
 cars = [people.vehicle];
 carSpeeds = [cars.speeds];
 busSpeeds = [buses.speeds];
 speeds = [carSpeeds busSpeeds];
 
-figure;
-histogram(speeds)
+figs = [];
+fig_titles = {};
+figs(end+1) = figure;
+histogram(speeds);
 title("Histogram of Vehicle Speeds")
+fig_titles{end+1} = 'Histogram of Vehicle Speeds';
 xlabel("Speed (blocks/sec)")
 ylabel("Number of vehicle seconds")
 
@@ -229,9 +245,28 @@ end
     
 gasEmissions = 8.887; % kg CO2 / gal
 emissions = gas.* gasEmissions;
-figure;
+figs(end+1) = figure;
 histogram(emissions)
 title("Histogram of Vehicle Emissions")
+fig_titles{end+1} = 'Histogram of Vehicle Emissions';
 xlabel("kg of CO_2")
 ylabel("Number of vehicles")
-sum(emissions)
+total_emissions = sum(emissions);
+
+costs = [people.transitCosts];
+figs(end+1) = figure;
+histogram(costs)
+title("Histogram of Transit Trip Costs")
+fig_titles{end+1} = 'Histogram of Transit Trip Costs';
+xlabel("Cost (Dollars)");
+ylabel("Number of trips");
+total_cost = sum(costs);
+
+for idx = 1:length(figs)
+    fig_title = fig_titles{idx}(~isspace(fig_titles{idx}));
+    saveas(figs(idx), sprintf("../testData/%s/%s%s.png", test_name, test_name, fig_title)); 
+end
+
+fileID = fopen(sprintf("../testData/%s/%s.txt", test_name, test_name), "w");
+fprintf(fileID, "Total Emissions: %f kg CO2\nTotal Cost: $%0.2f\n", total_emissions, total_cost);
+fclose(fileID);

@@ -8,5 +8,5 @@ end
 for idx = length(busRoutes):-1:1
     [p, d] = shortestpathtree(G, busRoutes{idx}, endNode, "OutputForm", "cell", "Method", "positive");
     [minLength(idx), index] = min(d);
-    egressNode(idx) = p{index}(end);
+    egressNode(idx) = p{index}(1);
 end

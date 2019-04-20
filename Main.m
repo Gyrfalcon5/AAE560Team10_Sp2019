@@ -158,12 +158,12 @@ for idx = num_people:-1:1
     people(idx).busImOn = 0;
 end
 
-recording = 0;
+recording = 1;
 visualization = 0;
 % Stuff for recording
 if recording == 1
     video_title = sprintf("../testData/%s/%s.avi", test_name, test_name);
-    v = VideoWriter(video_title, "Motion JPEG 2000");
+    v = VideoWriter(video_title, "Motion JPEG AVI");
     open(v);
 end
 

@@ -196,7 +196,7 @@ classdef Person < handle
                                      next_node.coordinate(2), linkTime);
                 obj.yPath = [ones(1,current_node.wait_time)*obj.yPath(1) obj.yPath];
                 obj.xPath = [ones(1,current_node.wait_time)*obj.xPath(1) obj.xPath];
-                obj.stepForward(mapGraph, map);
+                obj.stepForward(mapGraph, map, buses);
                 
             elseif obj.walking
                 obj.onLink = 1;
@@ -229,16 +229,15 @@ classdef Person < handle
                 costWalk = inf;
             end
             
-            
             [startMins, startPaths] = startWalk(walkGraph, currentNode);
             [endMins, endPaths] = endWalk(walkGraph, obj.destination);
             
             [busWalkDist, bestLoop] = mink(startMins+endMins,1);
-            busWalkDist = busWalkDist-1; % Adjusts to blocks, not nodes
             boardingStop = startPaths(bestLoop);
             egressStop = endPaths(bestLoop);
-            [~, walk1] = shortestpath(walkGraph, currentNode, boardingStop, "Method", "positive");
-            [~, walk2] = shortestpath(walkGraph, egressStop, obj.destination, "Method", "positive");
+            [startPath, walk1] = shortestpath(walkGraph, currentNode, boardingStop, "Method", "positive");
+            [endPath, walk2] = shortestpath(walkGraph, egressStop, obj.destination, "Method", "positive");
+            busWalkDist = length(startPath) + length(endPath) - 2; % Adjusts to blocks, not nodes
             % This is an estimate, we will probably want to make this
             % better if we have time
             [~, busTime] = shortestpath(carGraph, boardingStop, egressStop, "Method", "positive");
@@ -285,10 +284,6 @@ classdef Person < handle
             else
                 fprintf("Something is broken and you don't have a cost match!!\n")
             end
-            
-            
-            
-            
         end
     end
 end

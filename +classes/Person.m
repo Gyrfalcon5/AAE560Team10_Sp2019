@@ -114,7 +114,7 @@ classdef Person < handle
                             % we need
                             if ~isempty(busesHere)
                                 obj.currentBus = busesHere(1);
-                                if(obj.currentBus.numberOfPeopleOn <= 50)
+                                if(obj.currentBus.numberOfPeopleOn <= 40)
                                 
                                     obj.onBus = 1;
                                     obj.onNode = 0;
@@ -239,15 +239,15 @@ classdef Person < handle
             
             blocksPerMile = 17;
             currentNode = map(obj.coordinate(1), obj.coordinate(2)).id;
-            [path, time] = shortestpath(carGraph, currentNode, obj.destination, "Method", "positive");
-            speed = (length(path)-1)*blocksPerMile / time;
-            fuel = obj.vehicle.efficiency(speed)*time;
+            [path, driveTime] = shortestpath(carGraph, currentNode, obj.destination, "Method", "positive");
+            speed = (length(path)-1)*blocksPerMile / driveTime;
+            fuel = obj.vehicle.efficiency(speed)*driveTime;
             
-            costCar = fuel*gasPrice + time*obj.timeValue + 1; % The one is for having to own a car, I think
+            costCar = fuel*gasPrice + driveTime*obj.timeValue + 1; % The one is for having to own a car, I think
             
             if length(path) < 6 %sets walking cost to inf if the walking distance is more than 5 blocks
-                [~, time] = shortestpath(walkGraph, currentNode, obj.destination, "Method", "positive");
-                costWalk = time*obj.timeValue;
+                [~, walkTime] = shortestpath(walkGraph, currentNode, obj.destination, "Method", "positive");
+                costWalk = walkTime*obj.timeValue;
             else
                 costWalk = inf;
             end
@@ -277,6 +277,9 @@ classdef Person < handle
             boardingStop = onboardNode(bestLoop);
             costBus = bestBusTime * obj.timeValue + busFare;
             
+            costWalk = costWalk * (obj.emissionsWeight^0.33 + obj.costWeight^0.33 + obj.timeWeight^1.1);
+            costBus = costBus * (obj.emissionsWeight^1.05 + obj.costWeight^0.66 + obj.timeWeight^0.8);
+            costCar = costCar * (obj.emissionsWeight^1.1 + obj.costWeight^1.1 + obj.timeWeight^0.33);
             
             costs = [costWalk, costBus, costCar];            
             if min(costs) == costCar
@@ -296,7 +299,7 @@ classdef Person < handle
                     'XData', obj.vehicle.coordinate(1),...
                     'YData', obj.vehicle.coordinate(2));
                 obj.vehicle.stepForward(carGraph, map);
-                obj.transitCosts(end+1) = costCar;
+                obj.transitCosts(end+1) = fuel*gasPrice + driveTime*obj.timeValue + 1;
                 obj.arrived = 0;
                 obj.transitModes{end+1} = 'car';
             elseif min(costs) == costBus
@@ -310,7 +313,7 @@ classdef Person < handle
                 obj.rodeBus = 0;
                 obj.onLink = 0;
                 obj.onNode = 1;
-                obj.transitCosts(end+1) = costBus;
+                obj.transitCosts(end+1) = bestBusTime * obj.timeValue + busFare;
                 obj.arrived = 0;
                 obj.transitModes{end+1} = 'bus';
             elseif min(costs) == costWalk
@@ -320,7 +323,7 @@ classdef Person < handle
                 obj.walking = 1;
                 obj.busLine = 0;
                 obj.onBus = 0;
-                obj.transitCosts(end+1) = costWalk;
+                obj.transitCosts(end+1) = walkTime*obj.timeValue;
                 obj.arrived = 0;
                 obj.transitModes{end+1} = 'walk';
             else

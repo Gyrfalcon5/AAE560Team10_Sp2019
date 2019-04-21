@@ -157,13 +157,16 @@ for idx = num_people:-1:1
     people(idx).numOfBusStopsIDX = people(idx).numOfBusStops;
     people(idx).timeValue = 0.008273056; % Median for Indy, in dollars/sec
     people(idx).transitModes = {};
-    people(idx).decideMode(walkGraph, carGraph, map, gas_price, bus_fare, buses);
     people(idx).busImOn = 0;
     people(idx).ditchBus = 0;
+    people(idx).emissionsWeight = randi([1 10]);
+    people(idx).costWeight = randi([1 10]);
+    people(idx).timeWeight = randi([1 20]);
+    people(idx).decideMode(walkGraph, carGraph, map, gas_price, bus_fare, buses);
 end
 
 recording = 0;
-visualization = 1;
+visualization = 0;
 % Stuff for recording
 if recording == 1
     video_title = sprintf("../testData/%s/%s.avi", test_name, test_name);
@@ -217,7 +220,7 @@ while (1)
             else
                 unhappyPeople(idx).transitModes = {};
             end
-            unhappyPeople(idx).decideMode(walkGraph, carGraph, map, gas_price, 2*bus_fare, buses);
+            unhappyPeople(idx).decideMode(walkGraph, carGraph, map, gas_price, inf, buses);
             unhappyPeople(idx).ditchBus = 0;
         end
     end

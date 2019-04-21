@@ -52,9 +52,41 @@ classdef Bus < handle
             
             greyHolder = 192/255;
             colorGrey = [greyHolder,greyHolder,greyHolder];
-            obj.graphicsHandle = plot(obj.coordinate(1),obj.coordinate(2),...
-                                      'ko', 'Markerfacecolor',colorGrey,...
-                                      "Markersize", 10);
+            red = [1,0,0];
+            yellow = [1,1,0];
+            blue = [0,0,1];
+            purple = [1,0,1];
+            
+            if(obj.routeID == 1 || obj.routeID == 6)
+            
+                obj.graphicsHandle = plot(obj.coordinate(1),obj.coordinate(2),...
+                                          'ko', 'Markerfacecolor',colorGrey,...
+                                          "Markersize", 10);
+            end
+            if(obj.routeID == 2 || obj.routeID == 7)
+            
+                obj.graphicsHandle = plot(obj.coordinate(1),obj.coordinate(2),...
+                                          'ko', 'Markerfacecolor',red,...
+                                          "Markersize", 10);
+            end
+            if(obj.routeID == 3 || obj.routeID == 8)
+            
+                obj.graphicsHandle = plot(obj.coordinate(1),obj.coordinate(2),...
+                                          'ko', 'Markerfacecolor',yellow,...
+                                          "Markersize", 10);
+            end
+            if(obj.routeID == 4 || obj.routeID == 9)
+            
+                obj.graphicsHandle = plot(obj.coordinate(1),obj.coordinate(2),...
+                                          'ko', 'Markerfacecolor',purple,...
+                                          "Markersize", 10);
+            end
+            if(obj.routeID == 5 || obj.routeID == 10)
+            
+                obj.graphicsHandle = plot(obj.coordinate(1),obj.coordinate(2),...
+                                          'ko', 'Markerfacecolor',blue,...
+                                          "Markersize", 10);
+            end
             
         end
         

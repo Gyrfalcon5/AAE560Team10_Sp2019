@@ -84,6 +84,9 @@ classdef Person < handle
                     set(obj.graphicsHandle,'XData',obj.coordinate(1),'YData',obj.coordinate(2));
                     set(obj.vehicle.graphicsHandle,'XData',-1,'YData',-1);
                     obj.arrived = 1;
+                    obj.vehicle.arrived = 0;
+                    obj.vehicle.xPath = [];
+                    obj.vehicle.yPath = [];
                     obj.onCar = 0;
                     return
                 else
@@ -236,7 +239,8 @@ classdef Person < handle
             % Should run some calculations on how to get to destination,
             % and should get ready for that to happen. Right now it decides
             % randomly
-            
+            obj.xPath = [];
+            obj.yPath = [];
             blocksPerMile = 17;
             currentNode = map(obj.coordinate(1), obj.coordinate(2)).id;
             [path, driveTime] = shortestpath(carGraph, currentNode, obj.destination, "Method", "positive");

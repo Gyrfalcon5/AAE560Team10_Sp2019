@@ -16,7 +16,7 @@ mkdir("../testData", test_name);
 rng(560)
 
 %% Initialize Simulation
-
+fprintf("Initializing Map\n");
 fig_handle = figure;%('units','normalized','outerposition',[0 0 1 1]);
 axis equal;
 hold on;
@@ -91,6 +91,7 @@ end
 carGraph = graph(s, t, car_weights);
 walkGraph = graph(s, t, walk_weights);
 
+fprintf("Initializing Buses\n")
 load("./busRoutes.mat")
 num_buses = 2*length(busRoutes);
 % Make it so we have a route each way
@@ -129,8 +130,8 @@ map_x = map_coords(1:2:end);
 map_y = map_coords(2:2:end);
 destination_nodes = map(map_x > res_x | map_y > res_y); 
 
-
-num_people = 2;
+fprintf("Initializing People\n")
+num_people = 800;
 for idx = num_people:-1:1
     people(idx) = Person;
     people(idx).coordinate = [randi([1,res_x]) randi([1,res_y])];
@@ -160,7 +161,7 @@ for idx = num_people:-1:1
 end
 
 recording = 0;
-visualization = 1;
+visualization = 0;
 % Stuff for recording
 if recording == 1
     video_title = sprintf("../testData/%s/%s.avi", test_name, test_name);
@@ -171,7 +172,7 @@ end
 commuting_home = 0; % Tells us whether we've done evening rush hour
 
 %% Run Simulation
-
+fprintf("Starting simulation\n")
 while (1)
 
     for idx = 1:num_people
@@ -204,6 +205,12 @@ while (1)
                 people(idx).decideMode(walkGraph, carGraph, map, gas_price, bus_fare, buses);
             end
         end
+    end
+    
+    if commuting_home
+        fprintf("Simulation %0.2f percent complete\n", sum([people.arrived])/length(people)*50+50);   
+    else
+        fprintf("Simulation %0.2f percent complete\n", sum([people.arrived])/length(people)*50);
     end
     
     % Stuff for recording
@@ -262,6 +269,18 @@ fig_titles{end+1} = 'Histogram of Transit Trip Costs';
 xlabel("Cost (Dollars)");
 ylabel("Number of trips");
 total_cost = sum(costs)
+
+choices = {};
+for idx = 1:length(people)
+    for jdx = 1:length(people(idx).transitModes)
+        choices{end+1} = people(idx).transitModes{jdx};
+    end
+end
+choices = categorical(choices);
+figs(end+1) = figure;
+pie(choices)
+title('Pie Chart of Transit Choices')
+fig_titles{end+1} = 'Pie Chart of Transit Choices';
 
 for idx = 1:length(figs)
     fig_title = fig_titles{idx}(~isspace(fig_titles{idx}));

@@ -35,6 +35,7 @@ classdef Person < handle
         busImOn
         transitCosts % This records how much cost was incurred for transit,
                      % including the cost of the person's time
+        transitModes % Records what modes people take
     end
     
     methods
@@ -80,6 +81,7 @@ classdef Person < handle
                     set(obj.vehicle.graphicsHandle,'XData',-1,'YData',-1);
                     obj.arrived = 1;
                     obj.onCar = 0;
+                    return
                 else
                     obj.vehicle.stepForward(mapGraph, map);
                 end
@@ -108,11 +110,10 @@ classdef Person < handle
                             % ride
                             busesHere = buses(busX == obj.coordinate(1) ...
                                             & busY == obj.coordinate(2) ...
-                                            & [buses.routeID] == obj.busLine)
+                                            & [buses.routeID] == obj.busLine);
                             % TODO finish this, I think its the last thing
                             % we need
                             if ~isempty(busesHere)
-                                fprintf("hello\n")
                                 obj.currentBus = busesHere(1);
                                 if(obj.currentBus.numberOfPeopleOn <= 50)
                                 
@@ -149,6 +150,13 @@ classdef Person < handle
                                 obj.yPath = [];
                                 obj.rodeBus = 1;
                                 obj.onBus = 0;
+                                obj.currentBus = [];
+                                % If this stop is our destination, we have
+                                % arrived
+                                if obj.egressStop == obj.destination
+                                    obj.arrived = 1;
+                                    return
+                                end
                             end
                             % Just wait if the bus hasn't arrived
                         end
@@ -179,7 +187,7 @@ classdef Person < handle
                 path = shortestpath(mapGraph, current_node.id, destination, "Method", "positive");
                 % This still has problems, need to fix it somehow
                 
-                if length(path) == 1 & ~obj.busLine
+                if length(path) == 1 & (~obj.busLine | (obj.busLine & obj.rodeBus))
                     obj.arrived = 1;
                     obj.walking = 0;
                     return
@@ -188,17 +196,13 @@ classdef Person < handle
                     return % We just want to wait for the bus
                 end
                 next_node = map([map.id] == path(2));
-                if next_node.id == current_node.id & ~obj.busLine 
+                if next_node.id == current_node.id & (~obj.busLine | (obj.busLine & obj.rodeBus))
                     obj.arrived = 1;
                     obj.walking = 0;
                     return
-                elseif next_node.id == current_node.id & obj.busLine & obj.rodeBus
-                    obj.walking = 0;
-                    obj.arrived = 1;
-                    return % We just want to wait for the bus
                 elseif next_node.id == current_node.id & obj.busLine
                     obj.walking = 0;
-                    return;
+                    return % We just want to wait for the bus
                 end
                     
                 
@@ -269,7 +273,7 @@ classdef Person < handle
             costBus = bestBusTime * obj.timeValue + busFare;
             
             
-            costs = [costBus];            
+            costs = [costWalk, costBus, costCar];            
             if min(costs) == costCar
                 % Car Case
                 obj.vehicle.coordinate = obj.coordinate;
@@ -278,6 +282,10 @@ classdef Person < handle
                 obj.onLink = 0;
                 obj.onNode = 0;
                 obj.busLine = 0;
+                obj.onBus = 0;
+                obj.rodeBus = 0;
+                obj.boardingStop = [];
+                obj.egressStop = [];
                 set(obj.graphicsHandle,'XData',-1,'YData',-1);
                 set(obj.vehicle.graphicsHandle,...
                     'XData', obj.vehicle.coordinate(1),...
@@ -285,11 +293,13 @@ classdef Person < handle
                 obj.vehicle.stepForward(carGraph, map);
                 obj.transitCosts(end+1) = costCar;
                 obj.arrived = 0;
+                obj.transitModes{end+1} = 'car';
             elseif min(costs) == costBus
                 % Bus Case
                 obj.busLine = bestLoop;
                 obj.walking = 0;
                 obj.onCar = 0;
+                obj.onBus = 0;
                 obj.boardingStop = boardingStop;
                 obj.egressStop = egressStop;
                 obj.rodeBus = 0;
@@ -297,14 +307,17 @@ classdef Person < handle
                 obj.onNode = 1;
                 obj.transitCosts(end+1) = costBus;
                 obj.arrived = 0;
+                obj.transitModes{end+1} = 'bus';
             elseif min(costs) == costWalk
                 % Walking Case
                 obj.onLink = 0;
                 obj.onNode = 1;
                 obj.walking = 1;
                 obj.busLine = 0;
+                obj.onBus = 0;
                 obj.transitCosts(end+1) = costWalk;
                 obj.arrived = 0;
+                obj.transitModes{end+1} = 'walk';
             else
                 fprintf("Something is broken and you don't have a cost match!!\n")
             end

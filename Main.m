@@ -100,8 +100,8 @@ for idx = 1:num_routes
     busRoutes{end+1} = fliplr(busRoutes{idx});
 end
     
-bus_fare = 1; % Dollars
-gas_price = 2.80; % Dollars/gallon
+bus_fare = 1.75; % Dollars
+gas_price = 2.63; % Dollars/gallon
 for idx = num_buses:-1:1
     buses(idx) = Bus;
     buses(idx).onNode = 1;
@@ -156,12 +156,14 @@ for idx = num_people:-1:1
     people(idx).numOfBusStops = 2;
     people(idx).numOfBusStopsIDX = people(idx).numOfBusStops;
     people(idx).timeValue = 0.008273056; % Median for Indy, in dollars/sec
+    people(idx).transitModes = {};
     people(idx).decideMode(walkGraph, carGraph, map, gas_price, bus_fare, buses);
     people(idx).busImOn = 0;
+    people(idx).ditchBus = 0;
 end
 
 recording = 0;
-visualization = 0;
+visualization = 1;
 % Stuff for recording
 if recording == 1
     video_title = sprintf("../testData/%s/%s.avi", test_name, test_name);
@@ -204,6 +206,19 @@ while (1)
                 people(idx).vehicle.arrived = 0;
                 people(idx).decideMode(walkGraph, carGraph, map, gas_price, bus_fare, buses);
             end
+        end
+    end
+    
+    unhappyPeople = people([people.ditchBus] == 1);
+    if ~isempty(unhappyPeople)
+        for idx = 1:length(unhappyPeople)
+            if length(unhappyPeople(idx).transitModes) > 1
+                unhappyPeople(idx).transitModes = unhappyPeople(idx).transitModes(1:end-1);
+            else
+                unhappyPeople(idx).transitModes = {};
+            end
+            unhappyPeople(idx).decideMode(walkGraph, carGraph, map, gas_price, 2*bus_fare, buses);
+            unhappyPeople(idx).ditchBus = 0;
         end
     end
     

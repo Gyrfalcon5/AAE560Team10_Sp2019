@@ -36,6 +36,10 @@ classdef Person < handle
         transitCosts % This records how much cost was incurred for transit,
                      % including the cost of the person's time
         transitModes % Records what modes people take
+        ditchBus % When the bus is full and you want to find another way
+        emissionsWeight % How much this person wants to not destroy Greenland
+        costWeight % How much this person wants to save money
+        timeWeight % How much this person wans to get where they are going
     end
     
     methods
@@ -91,11 +95,6 @@ classdef Person < handle
                 % okay, might be able to reduce it
                 if obj.rodeBus
                     obj.walking = 1; % to reuse walking code after the bus
-                    for idx = length(buses):-1:1
-                        if(buses(idx).busID == obj.busImOn)
-                            buses(idx).numberOfPeopleOn = buses(idx).numberOfPeopleOn - 1;
-                        end                       
-                    end
                 else
                     % Check if we are at our stop
                     if obj.onNode
@@ -124,6 +123,7 @@ classdef Person < handle
                                     set(obj.graphicsHandle,'XData',-1,'YData',-1);
                                 else
                                     fprintf("GET DAT DOG N SUDS BRAH!\n");
+                                    obj.ditchBus = 1;
                                 end
                             end
                                 
@@ -151,6 +151,11 @@ classdef Person < handle
                                 obj.rodeBus = 1;
                                 obj.onBus = 0;
                                 obj.currentBus = [];
+                                for idx = length(buses):-1:1
+                                    if(buses(idx).busID == obj.busImOn)
+                                        buses(idx).numberOfPeopleOn = buses(idx).numberOfPeopleOn - 1;
+                                    end                       
+                                end
                                 % If this stop is our destination, we have
                                 % arrived
                                 if obj.egressStop == obj.destination

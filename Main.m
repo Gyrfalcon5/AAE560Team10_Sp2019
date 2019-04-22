@@ -99,9 +99,11 @@ num_routes = length(busRoutes);
 for idx = 1:num_routes
     busRoutes{end+1} = fliplr(busRoutes{idx});
 end
-    
-bus_fare = 1.75; % Dollars
-gas_price = 2.63; % Dollars/gallon
+
+bus_subsidy = 0.0;
+bus_fare = 1.75 - bus_subsidy; % Dollars
+gas_tax = 0;
+gas_price = 2.63 + gas_tax; % Dollars/gallon
 for idx = num_buses:-1:1
     buses(idx) = Bus;
     buses(idx).onNode = 1;
@@ -305,6 +307,10 @@ for idx = 1:length(figs)
     saveas(figs(idx), sprintf("../testData/%s/%s%s.png", test_name, test_name, fig_title)); 
 end
 
+tax_revenue = sum(gas(1:length(cars))) * gas_tax;
+subsidy_paid = sum(choices == 'bus') * bus_subsidy;
+
 fileID = fopen(sprintf("../testData/%s/%s.txt", test_name, test_name), "w");
 fprintf(fileID, "Total Emissions: %f kg CO2\nTotal Cost: $%0.2f\nNumber of People: %d\n", total_emissions, total_cost, num_people);
+fprintf(fileID, "Subsidy Paid: $%0.2f\nTax Paid: $%0.2f\nMake sure to account for differences here!\n", subsidy_paid, tax_revenue);
 fclose(fileID);
